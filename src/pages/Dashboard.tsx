@@ -2,7 +2,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Review } from "../types/review";
 import { mockReviews } from "../mocks/reviews";
-import ReviewList from "../components/ReviewList";
 import styles from "../styles/Dashboard.module.css";
 import ReviewSnippet from "../components/ReviewSnippet";
 
