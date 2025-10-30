@@ -1,4 +1,3 @@
-import React, { Suspense } from "react";
 import { Review } from "../types/review";
 import { useTrends } from "../hooks/useTrends";
 import styles from "../styles/Trends.module.css";
