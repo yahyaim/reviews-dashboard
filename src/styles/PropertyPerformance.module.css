@@ -1,0 +1,195 @@
+.wrap {
+    max-width: 1200px;
+    width: 100%;
+    margin: 8px auto 0;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  
+  .header {
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #fafafa;
+  }
+  
+  .title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  
+  .search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 0 12px;
+    width: 300px;
+  }
+  .search input {
+    border: 0;
+    outline: none;
+    width: 100%;
+    padding: 9px 8px;
+    font-size: 14px;
+    background: transparent;
+  }
+  .searchIcon {
+    width: 18px;
+    height: 18px;
+    color: #64748b;
+    margin-left: 6px;
+  }
+  .searchClear {
+    border: 0;
+    background: transparent;
+    font-size: 16px;
+    line-height: 1;
+    margin-right: 4px;
+    color: #9ca3af;
+    cursor: pointer;
+  }
+  .searchClear:hover { color: #6b7280; }
+  
+  .table {
+    display: block;
+  }
+  .thead, .row {
+    display: grid;
+    grid-template-columns: 1.6fr 0.8fr 0.7fr 0.9fr 1fr 1fr 1fr 0.9fr 1fr;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 16px;
+  }
+  .thead {
+    background: #f9fafb;
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 600;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .row {
+    border-top: 1px solid #f1f5f9;
+  }
+  .row:hover {
+    background: #fafafa;
+  }
+  
+  .th {
+    text-align: left;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #475569;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .thStatic {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 600;
+  }
+  .active { color: #111827; }
+  .sortDir { font-size: 11px; color: #6b7280; }
+  
+  .cell, .cellStrong {
+    font-size: 14px;
+    color: #0f172a;
+  }
+  .cellStrong { font-weight: 600; }
+  
+  .issue {
+    display: flex;
+    align-items: center;
+  }
+  .issuePill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    border: 1px solid #fee2e2;
+    background: #fef2f2;
+    color: #991b1b;
+  }
+  
+  .deltaPos {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: #d1fae5;
+    color: #065f46;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .deltaNeg {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: #fee2e2;
+    color: #991b1b;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .deltaNeutral {
+    display: inline-block;
+    font-size: 12px;
+    color: #6b7280;
+  }
+  
+  /* Responsive */
+  @media (max-width: 960px) {
+    .thead, .row {
+      grid-template-columns: 1.5fr 0.8fr 0.7fr 0.9fr 1fr 1fr 1fr 0.9fr 1fr;
+    }
+  }
+  
+/* Pagination for Property Performance (6 per page) */
+.paginationBar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px 16px;
+}
+
+.pageInfo {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.pageControls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pageBtn {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 14px;
+  color: #111827;
+}
+.pageBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pageNumber {
+  font-size: 13px;
+  color: #374151;
+}
