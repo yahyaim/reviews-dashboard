@@ -568,4 +568,62 @@
     justify-content: flex-start;
   }
 }
+/* Compound Date Range control */
+.dateRange {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 0 10px;
+  position: relative;
+}
+.inputDate {
+  height: 100%;
+  border: 0;
+  padding: 0 4px;
+  font-size: 14px;
+  color: #0f172a;
+  background: transparent;
+  min-width: 140px;            /* keeps both ends equal */
+}
+.inputDate:focus {
+  outline: none;
+}
+.datePrefix {
+  font-size: 12px;
+  color: #6b7280;
+}
+.dateDash {
+  color: #9ca3af;
+}
+.dateClear {
+  margin-left: 6px;
+  background: transparent;
+  border: 0;
+  font-size: 18px;
+  line-height: 1;
+  color: #9ca3af;
+  cursor: pointer;
+}
+.dateClear:hover { color: #6b7280; }
+
+/* Keep focus ring consistent with other inputs */
+.dateRange:focus-within {
+  outline: 2px solid #c7d2fe;
+  outline-offset: 0;
+  border-color: #a5b4fc;
+}
+
+/* Responsive */
+@media (max-width: 960px) {
+  .filtersGridTop {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dateRange { width: 100%; }
+  /* span the whole row on mobile for easier tap targets */
+  .inlineField[style*="grid-column: span 2"] { grid-column: 1 / -1 !important; }
+}
 
