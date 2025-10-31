@@ -2,13 +2,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { Review } from "../types/review";
 import { mockReviews } from "../mocks/reviews";
-import styles from "../styles/Dashboard.module.css";
 import { fetchAllReviewsHostaway } from "../api/hostways";
 import { usePropertyPerformance } from "../hooks/usePropertyPerformance";
 import { PropertyPerformance } from "../components/PropertyPerformance";
 import { TrendsAndIssues } from "../components/TrendsAndIssues";
 import { Filter } from "../components/Filter";
 import { Reviews } from "../components/Reviews";
+import NavBar from "../components/NavBar";
+import { Container } from "../components/ui";
 
 type ChannelTab = "All" | "Hostaway" | "Google";
 type CategoryKey = "cleanliness" | "communication" | "respect_house_rules";
@@ -18,8 +19,6 @@ const CATEGORIES: { key: CategoryKey; label: string }[] = [
   { key: "communication", label: "Communication" },
   { key: "respect_house_rules", label: "House Rules" },
 ];
-
-
 
 const Dashboard: React.FC = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -31,57 +30,39 @@ const Dashboard: React.FC = () => {
   const [category, setCategory] = useState<"All" | CategoryKey>("All");
   const [fromDate, setFromDate] = useState<string>("");
   const [toDate, setToDate] = useState<string>("");
-  const [listing, setListing] = useState<"All" | string>("All"); // NEW
+  const [listing, setListing] = useState<"All" | string>("All");
 
   // Pagination
   const [page, setPage] = useState(1);
-  
 
-  // Public selection map (Show on Website)
+  // Website visibility map
   const [publicMap, setPublicMap] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
-    // Use mocks for perceived performance
-    setReviews(mockReviews);
+    setReviews(mockReviews); // quick perceived load
 
-    // Try Hostaway; keep mocks if empty/fails
     (async () => {
       try {
-        const res = await fetchAllReviewsHostaway(
-          { sortOrder: "desc" },
-          100,
-          50
-        );
-        if (Array.isArray(res.result) && res.result.length > 0) {
-          setReviews(res.result);
-        }
-      } catch (err) {
-        console.error("Hostaway fetch failed; using mocks", err);
+        const res = await fetchAllReviewsHostaway({ sortOrder: "desc" }, 100, 50);
+        if (Array.isArray(res.result) && res.result.length > 0) setReviews(res.result);
+      } catch (e) {
+        console.error("Hostaway fetch failed; using mocks", e);
       }
     })();
   }, []);
 
-  // Initialize publicMap when reviews load
   useEffect(() => {
     if (!reviews?.length) return;
     setPublicMap((prev) => {
       const next = { ...prev };
-      for (const r of reviews) {
-        if (next[r.id] === undefined) next[r.id] = true; // default to public
-      }
+      for (const r of reviews) if (next[r.id] === undefined) next[r.id] = true;
       return next;
     });
   }, [reviews]);
 
-  // Reset to page 1 whenever filters/search change
-  useEffect(() => {
-    setPage(1);
-  }, [query, channel, ratingBand, category, fromDate, toDate, listing]);
+  useEffect(() => { setPage(1); }, [query, channel, ratingBand, category, fromDate, toDate, listing]);
 
-  const safeDate = (s?: string) => {
-    if (!s) return "";
-    return s.includes("T") ? s.split("T")[0] : s.split(" ")[0];
-  };
+  const safeDate = (s?: string) => (s ? (s.includes("T") ? s.split("T")[0] : s.split(" ")[0]) : "");
 
   const inBand = (v: number) => {
     if (ratingBand === "All") return true;
@@ -92,8 +73,7 @@ const Dashboard: React.FC = () => {
 
   const matchCategory = (r: Review) => {
     if (category === "All") return true;
-    const found = r.reviewCategory?.find((c) => c.category === category);
-    return !!found;
+    return !!r.reviewCategory?.find((c) => c.category === category);
   };
 
   const inDate = (s?: string) => {
@@ -104,12 +84,9 @@ const Dashboard: React.FC = () => {
     return true;
   };
 
-  // Unique listing options (sorted)
   const listingOptions = useMemo(() => {
     const set = new Set<string>();
-    for (const r of reviews) {
-      if (r.listingName) set.add(r.listingName);
-    }
+    for (const r of reviews) if (r.listingName) set.add(r.listingName);
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [reviews]);
 
@@ -118,39 +95,25 @@ const Dashboard: React.FC = () => {
     return reviews.filter((r) => {
       const src = r.source ?? "Hostaway";
       const matchChannel = channel === "All" ? true : src === channel;
-
-      // NEW: Match listing
       const matchListing = listing === "All" ? true : (r.listingName || "") === listing;
-
       const hay = `${r.guestName} ${r.listingName} ${r.publicReview}`.toLowerCase();
       const matchQ = q ? hay.includes(q) : true;
       const v = r.rating ?? 0;
-
       return matchChannel && matchListing && matchQ && inBand(v) && matchCategory(r) && inDate(r.submittedAt);
     });
   }, [reviews, query, channel, ratingBand, category, fromDate, toDate, listing]);
 
   const stats = useMemo(() => {
-    const base = filtered;
-    const total = base.length;
-    const ratings = base.map((r) => r.rating ?? 0);
-
-    const avg =
-      ratings.length === 0
-        ? 0
-        : Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10;
-
-    const positivePct =
-      total === 0
-        ? 0
-        : Math.round((base.filter((r) => (r.rating ?? 0) >= 9).length / total) * 100);
-
+    const total = filtered.length;
+    const ratings = filtered.map((r) => r.rating ?? 0);
+    const avg = ratings.length ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10 : 0;
+    const positivePct = total === 0 ? 0 : Math.round((filtered.filter((r) => (r.rating ?? 0) >= 9).length / total) * 100);
     return { total, avg, positivePct };
   }, [filtered]);
 
   const perf = usePropertyPerformance(filtered);
 
-  // ---------- Export helpers ----------
+  // ---- Export helpers ----
   type Row = {
     ID: number | string;
     Guest: string;
@@ -165,7 +128,8 @@ const Dashboard: React.FC = () => {
     Review: string;
   };
 
-  const getCategoryScore = (r: Review, key: CategoryKey) =>
+  type CategoryKeyLocal = "cleanliness" | "communication" | "respect_house_rules";
+  const getCategoryScore = (r: Review, key: CategoryKeyLocal) =>
     r.reviewCategory?.find((c) => c.category === key)?.rating ?? "";
 
   const toRows = (input: Review[]): Row[] =>
@@ -188,23 +152,21 @@ const Dashboard: React.FC = () => {
     const headerOrder = [
       "ID","Guest","Listing","Rating","Cleanliness","Communication","HouseRules","Source","Date","Public","Review",
     ] as const;
-
     const ordered = rows.map((r) => {
       const o: any = {};
       headerOrder.forEach((k) => (o[k] = (r as any)[k]));
       return o;
     });
-    const wsOrdered = XLSX.utils.json_to_sheet(ordered);
-    wsOrdered["!cols"] = [
+    const ws = XLSX.utils.json_to_sheet(ordered);
+    (ws as any)["!cols"] = [
       { wch: 8 }, { wch: 24 }, { wch: 28 }, { wch: 8 },
       { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 12 },
       { wch: 12 }, { wch: 10 }, { wch: 60 }
     ];
-    XLSX.utils.book_append_sheet(wb, wsOrdered, "Reviews");
+    XLSX.utils.book_append_sheet(wb, ws, "Reviews");
     XLSX.writeFile(wb, filename);
   };
 
-  // We compute pageRows locally for exportCurrentPage
   const PAGE_SIZE = 6;
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -216,82 +178,66 @@ const Dashboard: React.FC = () => {
   const exportFiltered = () => exportToExcel(toRows(filtered), "reviews_filtered.xlsx");
   const exportAll = () => exportToExcel(toRows(reviews), "reviews_all.xlsx");
 
-  // Active filter chips (for quick remove)
   const activeChips = [
     channel !== "All" && { label: `Channel: ${channel}`, onRemove: () => setChannel("All") },
     ratingBand !== "All" && { label: `Rating: ${ratingBand}`, onRemove: () => setRatingBand("All") },
-    category !== "All" && {
-      label: `Category: ${CATEGORIES.find((c) => c.key === category)?.label}`,
-      onRemove: () => setCategory("All"),
-    },
-    listing !== "All" && { label: `Listing: ${listing}`, onRemove: () => setListing("All") }, // NEW chip
+    category !== "All" && { label: `Category: ${CATEGORIES.find((c) => c.key === category)?.label}`, onRemove: () => setCategory("All") },
+    listing !== "All" && { label: `Listing: ${listing}`, onRemove: () => setListing("All") },
     fromDate && { label: `From: ${fromDate}`, onRemove: () => setFromDate("") },
     toDate && { label: `To: ${toDate}`, onRemove: () => setToDate("") },
     query && { label: `Search: “${query}”`, onRemove: () => setQuery("") },
   ].filter(Boolean) as { label: string; onRemove: () => void }[];
 
   const resetAll = () => {
-    setQuery("");
-    setChannel("All");
-    setRatingBand("All");
-    setCategory("All");
-    setFromDate("");
-    setToDate("");
-    setListing("All");
+    setQuery(""); setChannel("All"); setRatingBand("All"); setCategory("All");
+    setFromDate(""); setToDate(""); setListing("All");
   };
 
   return (
-    <div className={styles.page}>
-      {/* Filters / actions header */}
-      <Filter
-        query={query} setQuery={setQuery}
-        channel={channel} setChannel={setChannel}
-        ratingBand={ratingBand} setRatingBand={setRatingBand}
-        category={category} setCategory={setCategory}
-        fromDate={fromDate} setFromDate={setFromDate}
-        toDate={toDate} setToDate={setToDate}
-        listing={listing} setListing={setListing}
-        categoryOptions={CATEGORIES}
-        listingOptions={listingOptions}
-        activeChips={activeChips}
-        resetAll={resetAll}
-        onExportCurrentPage={exportCurrentPage}
-        onExportFiltered={exportFiltered}
-        onExportAll={exportAll}
-      />
+    <div className="flex min-h-screen flex-col">
+      <NavBar />
 
-      {/* KPI cards */}
-      <section className={styles.summaryGrid}>
-        <div className={styles.card}>
-          <div className={styles.cardLabel}>Total Reviews</div>
-          <div className={styles.cardValue}>{stats.total}</div>
-        </div>
+      {/* Page padding and rhythm */}
+      <main className="flex flex-col gap-5 py-4">
+        <Filter
+          query={query} setQuery={setQuery}
+          channel={channel} setChannel={setChannel}
+          ratingBand={ratingBand} setRatingBand={setRatingBand}
+          category={category} setCategory={setCategory}
+          fromDate={fromDate} setFromDate={setFromDate}
+          toDate={toDate} setToDate={setToDate}
+          listing={listing} setListing={setListing}
+          categoryOptions={CATEGORIES}
+          listingOptions={listingOptions}
+          activeChips={activeChips}
+          resetAll={resetAll}
+          onExportCurrentPage={exportCurrentPage}
+          onExportFiltered={exportFiltered}
+          onExportAll={exportAll}
+        />
 
-        <div className={styles.card}>
-          <div className={styles.cardLabel}>Average Rating</div>
-          <div className={styles.cardValue}>{stats.avg}</div>
-        </div>
+        {/* KPI cards */}
+        <Container>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-xl border border-brand-border bg-white p-4 shadow-card">
+              <div className="text-xs text-brand-muted">Total Reviews</div>
+              <div className="mt-1 flex items-baseline gap-2 text-2xl font-bold text-brand-accent">{stats.total}</div>
+            </div>
+            <div className="rounded-xl border border-brand-border bg-white p-4 shadow-card">
+              <div className="text-xs text-brand-muted">Average Rating</div>
+              <div className="mt-1 flex items-baseline gap-2 text-2xl font-bold text-brand-accent">{stats.avg}</div>
+            </div>
+            <div className="rounded-xl border border-brand-border bg-white p-4 shadow-card">
+              <div className="text-xs text-brand-muted">Positive (≥9)</div>
+              <div className="mt-1 flex items-baseline gap-2 text-2xl font-bold text-brand-accent">{stats.positivePct}%</div>
+            </div>
+          </div>
+        </Container>
 
-        <div className={styles.card}>
-          <div className={styles.cardLabel}>Positive (≥9)</div>
-          <div className={styles.cardValue}>{stats.positivePct}%</div>
-        </div>
-      </section>
-
-      {/* Property Performance */}
-      <PropertyPerformance data={perf} />
-
-      {/* Spot Trends & Issues */}
-      <TrendsAndIssues reviews={filtered} />
-
-      {/* Reviews Table */}
-      <Reviews
-         reviews={filtered}
-         page={page}
-         setPage={setPage}
-         publicMap={publicMap}
-         setPublicMap={setPublicMap}
-      />
+        <PropertyPerformance data={perf} />
+        <TrendsAndIssues reviews={filtered} />
+        <Reviews reviews={filtered} page={page} setPage={setPage} publicMap={publicMap} setPublicMap={setPublicMap} />
+      </main>
     </div>
   );
 };

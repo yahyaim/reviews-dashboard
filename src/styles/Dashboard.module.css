@@ -1,293 +1,275 @@
+/* ===== Page shell ===== */
 .page {
-  min-height: 100vh;
-  background: #f7f7f9;
-  padding: 32px 24px 80px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+  @apply min-h-screen bg-[var(--bg)] flex flex-col gap-6 pt-4 pb-20 px-4;
 }
 
-/* ---------- Header & Filters ---------- */
-.header {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  max-width: 1200px;
-  width: 100%;
-  margin: 0 auto;
+/* Keep every section centered to the same width */
+.header,
+.filterBar,
+.summaryGrid,
+.tableWrap,
+.paginationBar {
+  @apply w-full mx-auto;
+  max-width: var(--container);
 }
 
+/* ===== Title ===== */
 .title {
-  font-size: 24px;
-  font-weight: 700;
-  color: #0f172a;
+  @apply text-2xl font-bold;
+  color: var(--accent);
 }
 
-.filtersRow {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(140px, 1fr)) minmax(220px, 1.6fr);
-  gap: 12px;
+/* ===== Filter bar ===== */
+.filterBar {
+  @apply space-y-3;
 }
 
-.select,
-.input {
-  appearance: none;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 14px;
-  color: #0f172a;
+/* Two-tier grid */
+.filtersGridTop {
+  @apply grid gap-3;
+  grid-template-columns: repeat(4, minmax(160px, 1fr)) minmax(260px, 1.6fr);
+}
+.filtersGridBottom {
+  @apply grid items-center gap-3;
+  grid-template-columns: 1fr auto;
 }
 
+.inlineField {
+  @apply flex flex-col gap-1;
+}
+.inlineLabel {
+  @apply text-xs text-[var(--muted)];
+}
+
+.select {
+  @apply appearance-none bg-[var(--surface)] border rounded-lg text-sm h-11 px-3;
+  border-color: var(--border);
+  background-image: linear-gradient(45deg, transparent 50%, #9ca3af 50%),
+    linear-gradient(135deg, #9ca3af 50%, transparent 50%);
+  background-position:
+    calc(100% - 1.5rem) calc(50% - 3px),
+    calc(100% - 1rem) calc(50% - 3px);
+  background-size:
+    6px 6px,
+    6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 2.25rem;
+}
+.select:focus {
+  @apply outline-none ring-2;
+  ring-color: #c9d7d6;
+  border-color: #b6c9c7;
+}
+
+/* Date range (fixed alignment) */
+.dateRange {
+  @apply inline-flex items-center h-11 bg-[var(--surface)] border rounded-lg px-2 relative gap-2;
+  border-color: var(--border);
+}
+.inputDate {
+  @apply h-full bg-transparent text-sm min-w-[140px] px-1 border-0 outline-none;
+  color: var(--text);
+}
+.datePrefix {
+  @apply text-xs text-[var(--muted)];
+}
+.dateDash {
+  @apply text-zinc-400;
+}
+.dateClear {
+  @apply ml-1 text-lg leading-none text-zinc-400 hover:text-zinc-600;
+  background: none;
+  border: 0;
+}
+
+/* Search + clear + icon */
 .search {
-  position: relative;
-  display: flex;
-  align-items: center;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 0 12px;
+  @apply relative flex items-center h-11 bg-[var(--surface)] border rounded-lg px-3;
+  border-color: var(--border);
 }
 .search input {
-  border: 0;
-  outline: none;
-  width: 100%;
-  padding: 10px 8px;
-  font-size: 14px;
-  background: transparent;
+  @apply w-full bg-transparent border-0 outline-none text-sm py-2;
 }
 .searchIcon {
-  width: 18px;
-  height: 18px;
-  color: #64748b;
+  @apply w-4.5 h-4.5 text-[var(--muted)] ml-1;
+}
+.searchClear {
+  @apply text-base leading-none text-zinc-400 hover:text-zinc-600 mr-1;
+  background: none;
+  border: 0;
 }
 
-/* Active chips + reset */
-.chipsBar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
+/* Actions (left chips + right buttons) */
+.actionsRight {
+  @apply inline-flex items-center gap-2 flex-wrap;
 }
+
+.resetBtnPrimary {
+  @apply inline-flex items-center justify-center h-10 px-3 rounded-lg text-sm text-white;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+}
+.resetBtnPrimary:hover {
+  filter: brightness(1.05);
+}
+
+.exportGroup {
+  @apply inline-flex gap-2 flex-wrap;
+}
+.exportBtn {
+  @apply inline-flex items-center justify-center h-10 px-3 rounded-lg text-sm bg-[var(--surface)] border;
+  border-color: var(--border);
+  color: var(--text);
+}
+.exportBtn:hover {
+  @apply border-zinc-300;
+}
+
+/* Chips scroller (single line, fixed height) */
+.chipsScroller {
+  @apply flex gap-2 overflow-x-auto whitespace-nowrap pb-0.5;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  min-height: 32px;
+}
+.chipsScroller::-webkit-scrollbar {
+  height: 6px;
+}
+.chipsScroller::-webkit-scrollbar-thumb {
+  @apply rounded-full;
+  background: var(--border);
+}
+
 .activeChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  background: #eef2ff;
-  border: 1px solid #e0e7ff;
-  color: #3730a3;
-  border-radius: 999px;
-  font-size: 12px;
+  @apply inline-flex items-center gap-2 px-2.5 py-1 border rounded-pill text-xs;
+  background: #e8f0ef;
+  border-color: #d6e3e2;
+  color: var(--accent);
 }
-.activeChip:hover { filter: brightness(0.98); }
 .chipX {
-  width: 14px;
-  height: 14px;
+  @apply w-3.5 h-3.5;
 }
-.resetBtn {
-  margin-left: 4px;
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
-  padding: 6px 10px;
-  border-radius: 10px;
-  font-size: 12px;
-  color: #374151;
-}
-.resetBtn:hover { filter: brightness(0.98); }
 
-/* ---------- KPI Cards ---------- */
+/* ===== KPI cards ===== */
 .summaryGrid {
-  display: grid;
-  max-width: 1200px;
-  width: 100%;
-  margin: 0 auto;
+  @apply grid gap-4;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+}
+/* KPI Cards */
+.card {
+  @apply bg-brand-surface border rounded-xl p-4 flex flex-col justify-center;
+  @apply shadow-md ring-1 ring-black/5 transition-transform transition-shadow duration-200;
+  border-color: var(--border);
+  /* micro-lift on hover */
+}
+.card:hover { @apply shadow-lg -translate-y-px; }
+
+/* If you also want the big white sections (tables, performance block) to pop */
+.tableWrap,
+.summaryGrid + .tableWrap,
+.summaryGrid + .tableWrap + .paginationBar {
+  @apply shadow-sm ring-1 ring-black/5;
 }
 
-.card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 16px;
-}
+/* Optional: a “press” effect on click */
+.card:active { @apply translate-y-0 shadow-md; }
 .cardLabel {
-  font-size: 12px;
-  color: #6b7280;
+  @apply text-xs text-[var(--muted)];
 }
 .cardValue {
-  margin-top: 6px;
-  font-size: 28px;
-  font-weight: 700;
-  color: #111827;
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
+  @apply mt-1 text-2xl font-bold flex items-baseline gap-2;
+  color: var(--accent);
 }
 
-/* ---------- Table ---------- */
+/* ===== Reviews table ===== */
 .tableWrap {
-  max-width: 1200px;
-  width: 100%;
-  margin: 0 auto;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  overflow: hidden;
+  @apply bg-[var(--surface)] border rounded-xl overflow-hidden;
+  border-color: var(--border);
 }
-
-.tableHeader,
-.row {
-  display: grid;
-  grid-template-columns: 1.1fr 1.4fr 0.6fr 1.3fr 0.8fr 0.8fr 1.1fr;
-  gap: 12px;
-  align-items: center;
-}
-
 .tableHeader {
-  padding: 12px 16px;
-  background: #f9fafb;
-  font-size: 12px;
-  color: #6b7280;
-  font-weight: 600;
-  border-bottom: 1px solid #e5e7eb;
+  @apply grid gap-3 items-center px-4 py-3 text-xs font-semibold border-b;
+  background: #fbfaf6;
+  border-color: var(--border);
+  grid-template-columns: 1.1fr 1.4fr 0.6fr 1.3fr 0.8fr 0.8fr 1.1fr;
 }
-
 .row {
-  padding: 14px 16px;
-  border-top: 1px solid #f1f5f9;
+  @apply grid gap-3 items-center px-4 py-3 border-t;
+  border-color: #eee6d6;
+  grid-template-columns: 1.1fr 1.4fr 0.6fr 1.3fr 0.8fr 0.8fr 1.1fr;
 }
 .row:hover {
-  background: #fafafa;
+  background: #faf6ee;
 }
-
 .cell,
 .cellStrong {
-  font-size: 14px;
-  color: #0f172a;
+  @apply text-sm;
+  color: var(--text);
 }
 .cellStrong {
-  font-weight: 600;
+  @apply font-semibold;
 }
 
-.empty {
-  padding: 24px;
-  text-align: center;
-  color: #6b7280;
-  font-size: 14px;
-}
-
-/* Category chips (inside table rows) */
 .chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  @apply flex flex-wrap gap-1.5;
 }
 .chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
-  font-size: 12px;
+  @apply inline-flex items-center gap-1.5 px-2 py-1 rounded-pill border text-xs;
+  background: #f2ede1;
+  border-color: var(--border);
 }
 .cap {
-  text-transform: capitalize;
-  color: #374151;
+  @apply capitalize text-slate-700;
 }
 .score {
-  font-weight: 700;
-  color: #111827;
-}
-.more {
-  font-size: 12px;
-  color: #6b7280;
-  padding: 4px 0 4px 2px;
+  @apply font-bold;
+  color: var(--accent);
 }
 
 .source {
-  display: inline-block;
-  padding: 4px 8px;
-  font-size: 12px;
-  border-radius: 999px;
-  background: #eef2ff;
-  color: #3730a3;
-  border: 1px solid #e0e7ff;
+  @apply inline-block px-2 py-1 text-xs rounded-pill border;
+  background: #e8f0ef;
+  color: var(--accent);
+  border-color: #d6e3e2;
 }
 
+/* Toggle */
 .toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  user-select: none;
+  @apply inline-flex items-center gap-2 select-none;
 }
 .toggle input {
-  width: 16px;
-  height: 16px;
+  @apply w-4 h-4;
+  accent-color: var(--accent);
 }
 
-/* ---------- Pagination ---------- */
+/* ===== Pagination ===== */
 .paginationBar {
-  max-width: 1200px;
-  width: 100%;
-  margin: 12px auto 0;
-  display: grid;
+  @apply grid items-center gap-3;
   grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 12px;
 }
-
-.pageSize {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #374151;
-}
-.pageSize select {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 6px 8px;
-  font-size: 13px;
-}
-
 .pageInfo {
-  justify-self: center;
-  font-size: 13px;
-  color: #6b7280;
+  @apply justify-self-center text-sm text-[var(--muted)];
 }
-
 .pageControls {
-  justify-self: end;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  @apply justify-self-end inline-flex items-center gap-2;
 }
 .pageBtn {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 14px;
-  color: #111827;
+  @apply bg-[var(--surface)] border rounded-lg px-2.5 py-1.5 text-sm;
+  border-color: var(--border);
+}
+.pageBtn:hover {
+  @apply border-zinc-300;
 }
 .pageBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  @apply opacity-50 cursor-not-allowed;
 }
 .pageNumber {
-  font-size: 13px;
-  color: #374151;
+  @apply text-sm;
+  color: var(--accent);
 }
 
-/* ---------- Responsive ---------- */
+/* ===== Responsive ===== */
 @media (max-width: 960px) {
-  .filtersRow {
+  .filtersGridTop {
     grid-template-columns: 1fr 1fr;
   }
   .summaryGrid {
@@ -301,329 +283,44 @@
     grid-template-columns: 1fr;
     gap: 10px;
   }
-  .pageInfo, .pageControls { justify-self: start; }
-}
-/* ... keep existing styles from earlier response ... */
-
-/* Search add-on */
-.search {
-  position: relative;
-  display: flex;
-  align-items: center;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 0 12px;
-}
-.search input {
-  border: 0;
-  outline: none;
-  width: 100%;
-  padding: 10px 8px;
-  font-size: 14px;
-  background: transparent;
-}
-.searchIcon {
-  width: 18px;
-  height: 18px;
-  color: #64748b;
-  margin-left: 6px;
-}
-.searchClear {
-  border: 0;
-  background: transparent;
-  font-size: 16px;
-  line-height: 1;
-  margin-right: 4px;
-  color: #9ca3af;
-  cursor: pointer;
-}
-.searchClear:hover { color: #6b7280; }
-
-/* Actions bar: chips + reset (always visible reset) */
-.filtersActions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.chipsBar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
-.activeChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  background: #eef2ff;
-  border: 1px solid #e0e7ff;
-  color: #3730a3;
-  border-radius: 999px;
-  font-size: 12px;
-}
-.activeChip:hover { filter: brightness(0.98); }
-.chipX {
-  width: 14px;
-  height: 14px;
-}
-
-/* Primary reset button (always shown) */
-.resetBtnPrimary {
-  background: #111827;
-  color: #fff;
-  border: 1px solid #111827;
-  padding: 8px 12px;
-  border-radius: 10px;
-  font-size: 13px;
-}
-.resetBtnPrimary:hover { filter: brightness(1.05); }
-
-/* ... keep the rest (KPI cards, table, pagination, responsive) ... */
-
-/* Responsive tweak for actions bar */
-@media (max-width: 960px) {
-  .filtersActions {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-  }
-  .resetBtnPrimary { align-self: flex-start; }
-}
-
-/* Actions bar right area (reset + export) */
-.actionsRight {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.exportGroup {
-  display: inline-flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.exportBtn {
-  background: #ffffff;
-  color: #111827;
-  border: 1px solid #e5e7eb;
-  padding: 8px 12px;
-  border-radius: 10px;
-  font-size: 13px;
-}
-.exportBtn:hover { filter: brightness(0.98); }
-
-/* keep these from earlier if not present */
-.resetBtnPrimary {
-  background: #111827;
-  color: #fff;
-  border: 1px solid #111827;
-  padding: 8px 12px;
-  border-radius: 10px;
-  font-size: 13px;
-}
-.resetBtnPrimary:hover { filter: brightness(1.05); }
-
-/* Responsive: stack buttons nicely on mobile */
-@media (max-width: 960px) {
-  .actionsRight {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .exportGroup {
-    justify-content: flex-start;
-  }
-}
-
-/* ---- Filter bar shell ---- */
-.filterBar {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-width: 1200px;
-  width: 100%;
-  margin: 0 auto;
-}
-
-/* Row 1: compact grid of dropdowns + dates */
-.filtersGridTop {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(160px, 1fr)) minmax(260px, 1.6fr);
-  gap: 12px;
-}
-
-/* Row 2: search expands, actions stick right */
-.filtersGridBottom {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 12px;
-}
-
-/* inline label + control (keeps row height steady) */
-.inlineField {
-  display: grid;
-  grid-template-rows: auto auto;
-  gap: 6px;
-}
-.inlineLabel {
-  font-size: 12px;
-  color: #6b7280;
-  line-height: 1;
-}
-
-/* Unify control height & focus */
-.select,
-.input,
-.search {
-  height: 44px;
-  border-radius: 10px;
-}
-.select,
-.input {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  padding: 10px 12px;
-  font-size: 14px;
-  color: #0f172a;
-}
-.select:focus,
-.input:focus,
-.search:focus-within {
-  outline: 2px solid #c7d2fe; /* soft indigo focus */
-  outline-offset: 0;
-  border-color: #a5b4fc;
-}
-
-/* Make selects obviously dropdowns (caret) */
-.select {
-  background-image:
-    linear-gradient(45deg, transparent 50%, #9ca3af 50%),
-    linear-gradient(135deg, #9ca3af 50%, transparent 50%);
-  background-position: calc(100% - 18px) calc(50% - 3px), calc(100% - 12px) calc(50% - 3px);
-  background-size: 6px 6px, 6px 6px;
-  background-repeat: no-repeat;
-  padding-right: 28px;
-}
-
-/* Search full-width, fixed height */
-.search {
-  position: relative;
-  display: flex;
-  align-items: center;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  padding: 0 12px;
-}
-.search input {
-  border: 0;
-  outline: none;
-  width: 100%;
-  padding: 10px 8px;
-  font-size: 14px;
-  background: transparent;
-}
-.searchIcon { width: 18px; height: 18px; color: #64748b; margin-left: 6px; }
-.searchClear {
-  border: 0; background: transparent; font-size: 16px; line-height: 1;
-  margin-right: 4px; color: #9ca3af; cursor: pointer;
-}
-.searchClear:hover { color: #6b7280; }
-
-/* Actions stay on a single line */
-.actionsRight { display: inline-flex; align-items: center; gap: 10px; }
-
-/* Chips: single-line scroller, fixed height to avoid pushing content */
-.chipsScroller {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  white-space: nowrap;
-  padding-bottom: 2px;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  min-height: 32px; /* keeps space stable even with zero chips */
-}
-.chipsScroller::-webkit-scrollbar { height: 6px; }
-.chipsScroller::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 999px; }
-
-/* Buttons already defined in your file; keep using .resetBtnPrimary / .exportBtn */
-
-/* Responsive */
-@media (max-width: 960px) {
-  .filtersGridTop {
-    grid-template-columns: 1fr 1fr;
+  .pageInfo,
+  .pageControls {
+    @apply justify-self-start;
   }
   .filtersGridBottom {
     grid-template-columns: 1fr;
     gap: 8px;
   }
   .actionsRight {
-    flex-wrap: wrap;
-    justify-content: flex-start;
+    @apply flex-wrap justify-start;
+  }
+  .dateRange {
+    @apply w-full;
   }
 }
-/* Compound Date Range control */
-.dateRange {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 44px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 0 10px;
-  position: relative;
-}
-.inputDate {
-  height: 100%;
-  border: 0;
-  padding: 0 4px;
-  font-size: 14px;
-  color: #0f172a;
-  background: transparent;
-  min-width: 140px;            /* keeps both ends equal */
-}
-.inputDate:focus {
-  outline: none;
-}
-.datePrefix {
-  font-size: 12px;
-  color: #6b7280;
-}
-.dateDash {
-  color: #9ca3af;
-}
-.dateClear {
-  margin-left: 6px;
-  background: transparent;
-  border: 0;
-  font-size: 18px;
-  line-height: 1;
-  color: #9ca3af;
-  cursor: pointer;
-}
-.dateClear:hover { color: #6b7280; }
 
-/* Keep focus ring consistent with other inputs */
-.dateRange:focus-within {
-  outline: 2px solid #c7d2fe;
-  outline-offset: 0;
-  border-color: #a5b4fc;
+/* ===== Alignment & rhythm fixes ===== */
+.header + .filterBar {
+  @apply mt-2;
+}
+.summaryGrid {
+  @apply mt-5;
+}
+.tableWrap {
+  @apply mt-4;
+}
+.paginationBar {
+  @apply mt-2;
 }
 
-/* Responsive */
-@media (max-width: 960px) {
-  .filtersGridTop {
-    grid-template-columns: 1fr 1fr;
-  }
-  .dateRange { width: 100%; }
-  /* span the whole row on mobile for easier tap targets */
-  .inlineField[style*="grid-column: span 2"] { grid-column: 1 / -1 !important; }
+/* Neutral badges anywhere */
+.badge,
+.issue,
+.tag,
+.danger,
+.error {
+  @apply inline-block px-2 py-1 text-xs rounded-pill border;
+  background: #e8f0ef;
+  color: var(--accent);
+  border-color: #d6e3e2;
 }
-

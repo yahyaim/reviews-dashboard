@@ -1,10 +1,10 @@
+import React from "react";
+import { Card, Container } from "./ui";
 import { Review } from "../types/review";
 import { useTrends } from "../hooks/useTrends";
-import styles from "../styles/Trends.module.css";
-
 
 const Sparkline: React.FC<{ values: number[] }> = ({ values }) => {
-  if (!values.length) return <div className={styles.sparkEmpty}>—</div>;
+  if (!values.length) return <div className="text-sm text-slate-500">—</div>;
   const w = 180, h = 48, pad = 4;
   const min = Math.min(...values), max = Math.max(...values);
   const range = max - min || 1;
@@ -15,7 +15,7 @@ const Sparkline: React.FC<{ values: number[] }> = ({ values }) => {
     return `${x},${y}`;
   }).join(" ");
   return (
-    <svg className={styles.spark} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden>
+    <svg className="h-12 w-full text-slate-900" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden>
       <polyline fill="none" stroke="currentColor" strokeWidth="2" points={points} />
     </svg>
   );
@@ -31,109 +31,123 @@ export const TrendsAndIssues: React.FC<Props> = ({ reviews }) => {
   const negSeries = negativeShare.map((s) => s.share);
 
   return (
-    <section className={styles.wrap}>
-      <header className={styles.header}>
-        <h2 className={styles.title}>Spot Trends & Recurring Issues</h2>
-        <p className={styles.sub}>Based on the current filters</p>
-      </header>
+    <Container className="mt-5">
+      <Card>
+        <header className="flex items-baseline justify-between gap-3 border-b border-brand-border bg-[#fafafa] p-4">
+          <h2 className="text-base font-bold text-brand-text">Spot Trends & Recurring Issues</h2>
+          <p className="text-sm text-brand-muted">Based on the current filters</p>
+        </header>
 
-      {/* Alerts / Watchlist */}
-      {watchlist.length > 0 && (
-        <div className={styles.alerts}>
-          {watchlist.map((w, i) => (
-            <div key={i} className={`${styles.alert} ${w.type === "drop" ? styles.drop : styles.spike}`}>
-              <span className={styles.bullet} aria-hidden>●</span>
-              {w.message}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Mini metrics */}
-      <div className={styles.kpis}>
-        <div className={styles.kpi}>
-          <div className={styles.kpiLabel}>Avg rating (trend)</div>
-          <Sparkline values={avgSeries} />
-          <div className={styles.kpiFoot}>
-            {series.length ? `${series[0].month} → ${series[series.length-1].month}` : "—"}
-          </div>
-        </div>
-        <div className={styles.kpi}>
-          <div className={styles.kpiLabel}>Negative share %</div>
-          <Sparkline values={negSeries} />
-          <div className={styles.kpiFoot}>
-            {negativeShare.length ? `${negativeShare[0].month} → ${negativeShare[negativeShare.length-1].month}` : "—"}
-          </div>
-        </div>
-
-        <div className={styles.kpiTable}>
-          <div className={styles.kpiLabel}>Category Δ (last vs prev month)</div>
-          <div className={styles.deltaTable}>
-            <div className={styles.deltaHead}>
-              <span>Category</span><span>Prev</span><span>Last</span><span>Δ</span>
-            </div>
-            {categoryDeltas.map((c) => (
-              <div key={c.key} className={styles.deltaRow}>
-                <span className={styles.cap}>{c.key.replace(/_/g," ")}</span>
-                <span>{c.prev ?? "—"}</span>
-                <span>{c.last ?? "—"}</span>
-                <span className={c.delta !== null && c.delta < 0 ? styles.bad : styles.good}>
-                  {c.delta !== null ? (c.delta > 0 ? `+${c.delta}` : `${c.delta}`) : "—"}
-                </span>
+        {/* Alerts */}
+        {watchlist.length > 0 && (
+          <div className="grid gap-2 p-4 pt-3">
+            {watchlist.map((w, i) => (
+              <div
+                key={i}
+                className={`flex items-center gap-2 rounded-lg border p-3 text-sm ${
+                  w.type === "drop"
+                    ? "border-rose-200 bg-rose-50 text-rose-800"
+                    : "border-amber-200 bg-amber-50 text-amber-800"
+                }`}
+              >
+                <span className="text-xs">●</span>
+                {w.message}
               </div>
             ))}
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* Top issues (keywords / bigrams) */}
-      <div className={styles.issuesGrid}>
-        <div className={styles.card}>
-          <div className={styles.cardTitle}>Recurring keywords (neg./neutral)</div>
-          <div className={styles.chips}>
-            {topKeywords.length === 0 ? <span className={styles.empty}>No data</span> :
-              topKeywords.map(k => (
-                <span key={k.term} className={styles.chip}>
-                  <span>{k.term}</span>
-                  <b className={styles.count}>{k.count}</b>
-                </span>
-              ))}
-          </div>
-        </div>
-        <div className={styles.card}>
-          <div className={styles.cardTitle}>Common 2-word phrases</div>
-          <div className={styles.chips}>
-            {topBigrams.length === 0 ? <span className={styles.empty}>No data</span> :
-              topBigrams.map(k => (
-                <span key={k.term} className={styles.chip}>
-                  <span>{k.term}</span>
-                  <b className={styles.count}>{k.count}</b>
-                </span>
-              ))}
-          </div>
-        </div>
-        <div className={styles.card}>
-          <div className={styles.cardTitle}>Listings with most negatives</div>
-          <ul className={styles.list}>
-            {listingsWithIssues.length === 0 ? <li className={styles.empty}>No negatives found</li> :
-              listingsWithIssues.map((l) => (
-                <li key={l.listing} className={styles.listRow}>
-                  <span className={styles.listing}>{l.listing}</span>
-                  <span className={styles.badBadge}>{l.negatives}</span>
-                </li>
-              ))}
-          </ul>
-        </div>
-      </div>
+        {/* KPIs */}
+        <div className="grid gap-3 p-4 lg:grid-cols-[220px_220px_1fr]">
+          <Card className="p-3">
+            <div className="mb-1 text-xs text-brand-muted">Avg rating (trend)</div>
+            <Sparkline values={avgSeries} />
+            <div className="mt-1 text-xs text-brand-muted">
+              {series.length ? `${series[0].month} → ${series[series.length - 1].month}` : "—"}
+            </div>
+          </Card>
 
-      {/* Optional: lazy-loaded word cloud if you want it */}
-      {/* 
-        npm i react-wordcloud d3-cloud
-        const WordCloud = React.lazy(() => import('./WordCloudOptional'));
-        <Suspense fallback={<div className={styles.card}>Loading word cloud…</div>}>
-          <WordCloud words={topKeywords} />
-        </Suspense>
-      */}
-    </section>
+          <Card className="p-3">
+            <div className="mb-1 text-xs text-brand-muted">Negative share %</div>
+            <Sparkline values={negSeries} />
+            <div className="mt-1 text-xs text-brand-muted">
+              {negativeShare.length ? `${negativeShare[0].month} → ${negativeShare[negativeShare.length - 1].month}` : "—"}
+            </div>
+          </Card>
+
+          <Card className="p-3">
+            <div className="mb-2 text-xs text-brand-muted">Category Δ (last vs prev month)</div>
+            <div className="grid gap-1">
+              <div className="grid grid-cols-[1.2fr_.6fr_.6fr_.4fr] items-center gap-2 border-b border-dashed border-brand-border pb-1 text-xs font-semibold text-slate-600">
+                <span>Category</span><span>Prev</span><span>Last</span><span>Δ</span>
+              </div>
+              {categoryDeltas.map((c) => (
+                <div key={c.key} className="grid grid-cols-[1.2fr_.6fr_.6fr_.4fr] items-center gap-2 text-sm">
+                  <span className="capitalize text-slate-700">{c.key.replace(/_/g," ")}</span>
+                  <span>{c.prev ?? "—"}</span>
+                  <span>{c.last ?? "—"}</span>
+                  <span className={`${c.delta !== null && c.delta < 0 ? "text-rose-800" : "text-emerald-800"}`}>
+                    {c.delta !== null ? (c.delta > 0 ? `+${c.delta}` : `${c.delta}`) : "—"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+
+        {/* Issues grid */}
+        <div className="grid gap-3 p-4 lg:grid-cols-3">
+          <Card className="p-3">
+            <div className="mb-2 text-sm font-bold text-brand-text">Recurring keywords (neg./neutral)</div>
+            <div className="flex flex-wrap gap-2">
+              {topKeywords.length === 0 ? (
+                <span className="text-sm text-brand-muted">No data</span>
+              ) : (
+                topKeywords.map(k => (
+                  <span key={k.term} className="inline-flex items-center gap-1 rounded-full border border-brand-border bg-slate-100 px-2 py-1 text-xs text-slate-700">
+                    <span>{k.term}</span>
+                    <b className="text-slate-900">{k.count}</b>
+                  </span>
+                ))
+              )}
+            </div>
+          </Card>
+
+          <Card className="p-3">
+            <div className="mb-2 text-sm font-bold text-brand-text">Common 2-word phrases</div>
+            <div className="flex flex-wrap gap-2">
+              {topBigrams.length === 0 ? (
+                <span className="text-sm text-brand-muted">No data</span>
+              ) : (
+                topBigrams.map(k => (
+                  <span key={k.term} className="inline-flex items-center gap-1 rounded-full border border-brand-border bg-slate-100 px-2 py-1 text-xs text-slate-700">
+                    <span>{k.term}</span>
+                    <b className="text-slate-900">{k.count}</b>
+                  </span>
+                ))
+              )}
+            </div>
+          </Card>
+
+          <Card className="p-3">
+            <div className="mb-2 text-sm font-bold text-brand-text">Listings with most negatives</div>
+            <ul className="grid gap-2">
+              {listingsWithIssues.length === 0 ? (
+                <li className="text-sm text-brand-muted">No negatives found</li>
+              ) : (
+                listingsWithIssues.map((l) => (
+                  <li key={l.listing} className="flex items-center justify-between">
+                    <span className="max-w-[70%] truncate text-sm text-brand-text">{l.listing}</span>
+                    <span className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-800">
+                      {l.negatives}
+                    </span>
+                  </li>
+                ))
+              )}
+            </ul>
+          </Card>
+        </div>
+      </Card>
+    </Container>
   );
 };

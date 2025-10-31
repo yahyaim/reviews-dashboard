@@ -73,4 +73,8 @@ button:focus-visible {
 @layer base {
   html, body, #root { height: 100%; }
   body { @apply bg-slate-50 text-slate-900 antialiased; }
+  html, body { @apply bg-[var(--bg)] m-0; }
+  
+  
 }
+

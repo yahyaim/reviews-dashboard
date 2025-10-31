@@ -1,57 +1,39 @@
-.nav {
-    position: sticky;
-    top: 0;
-    z-index: 50;
-    backdrop-filter: saturate(180%) blur(8px);
-    background: rgba(245, 247, 251, 0.75);
-    border-bottom: 1px solid var(--border);
+.wrap {
+  @apply sticky top-0 z-30 border-b bg-white/90 backdrop-blur;
+  border-color: var(--border);
 }
-
 .inner {
-    max-width: var(--container);
-    margin: 0 auto;
-    padding: 14px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+  /* the canonical shell – must match the page sections */
+  @apply mx-auto h-14 flex items-center justify-between px-4 md:px-6;
+  max-width: var(--container);
 }
 
-.brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
+.brand { @apply flex items-center gap-2; }
+.logo { @apply w-7 h-7 rounded-md; background-color: var(--accent); }
+.title { @apply font-semibold; color: var(--accent); }
+.nav { @apply flex items-center gap-2; }
+.link { @apply inline-flex items-center h-9 px-3 rounded-md text-sm no-underline transition-colors; color: #0f172a; }
+.link:hover { color: var(--accent); }
+.active { @apply font-semibold; color: var(--accent); }
 .logo {
-    width: 22px;
-    height: 22px;
-    object-fit: contain;
+  @apply w-7 h-7 rounded-md;
+  background-color: var(--accent);
 }
 .title {
-    font-weight: 700;
-    letter-spacing: -0.01em;
+  @apply font-semibold;
+  color: var(--accent);
 }
-
-.links {
-    display: flex;
-    gap: 12px;
+.nav {
+  @apply flex items-center gap-2;
 }
-
 .link {
-    color: var(--muted);
-    text-decoration: none;
-    font-weight: 600;
-    padding: 8px 10px;
-    border-radius: 999px;
-    border: 1px solid transparent;
+  @apply inline-flex items-center h-9 px-3 rounded-md text-sm no-underline transition-colors;
+  color: #0f172a;
 }
-.link:hover {
-    background: #fff;
-    border-color: var(--border);
-    color: #0f172a;
-}
+.link:hover { color: var(--accent); }
 
-.active {
-    background: #fff;
-    border-color: var(--border);
-    color: #0f172a;
-}
+
+/* dark mode safe */
+:global(html[data-theme="dark"]) .wrap { @apply bg-black/60; border-color: #23252a; }
+:global(html[data-theme="dark"]) .link:hover { @apply bg-zinc-900; }
+:global(html[data-theme="dark"]) .active { @apply bg-zinc-900; }
