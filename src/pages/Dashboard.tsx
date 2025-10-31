@@ -39,8 +39,8 @@ const Dashboard: React.FC = () => {
   // Website visibility map
   const [publicMap, setPublicMap] = useState<Record<number, boolean>>({});
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setLoading] = useState(true);
+  const [, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // 1) Optimistic: show mocks immediately for perceived performance
