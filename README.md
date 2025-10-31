@@ -31,7 +31,7 @@ The dashboard centralizes performance insights, highlights trends, and makes it 
 
 ---
 
-## 🧱 Tech Stack
+## 🧱 Tech Stack 
 
 **Frontend**
 - [React 18](https://react.dev/) with [Vite](https://vitejs.dev/)
@@ -51,20 +51,6 @@ The dashboard centralizes performance insights, highlights trends, and makes it 
 
 ---
 
-## 🧩 Architecture Overview
-
-Frontend (React + Vite)
-     │
-     ▼
-Serverless API (/api/reviews)
-     │
-     ├── Calls Hostaway Reviews API
-     │       ↳ Normalizes data into unified schema
-     │
-     └── Returns JSON to client
-             ↳ Filtered, visualized, and exported in Dashboard
-
----
 
 ## 🧮 Review Normalization Schema
 
