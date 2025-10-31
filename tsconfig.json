@@ -5,7 +5,8 @@
     { "path": "./tsconfig.node.json" }
   ],
   "compilerOptions": {
-     "jsx": "react-jsx"
+     "jsx": "react-jsx",
+     "types": ["node"],
     // "target": "ES2021",
     // "lib": ["DOM", "ES2021"],
   },

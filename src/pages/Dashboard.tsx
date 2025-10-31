@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { Review } from "../types/review";
 import { mockReviews } from "../mocks/reviews";
-import { fetchAllReviewsHostaway } from "../api/hostways";
+// import { fetchAllReviewsHostaway } from "../api/hostways";
+import { fetchAllReviews } from "../api/fetchReviews";
 import { usePropertyPerformance } from "../hooks/usePropertyPerformance";
 import { PropertyPerformance } from "../components/PropertyPerformance";
 import { TrendsAndIssues } from "../components/TrendsAndIssues";
@@ -38,15 +39,33 @@ const Dashboard: React.FC = () => {
   // Website visibility map
   const [publicMap, setPublicMap] = useState<Record<number, boolean>>({});
 
-  useEffect(() => {
-    setReviews(mockReviews); // quick perceived load
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    // 1) Optimistic: show mocks immediately for perceived performance
+    setReviews(mockReviews);
+
+    // 2) Real fetch from server: /api/reviews (Edge function)
     (async () => {
       try {
-        const res = await fetchAllReviewsHostaway({ sortOrder: "desc" }, 100, 50);
-        if (Array.isArray(res.result) && res.result.length > 0) setReviews(res.result);
-      } catch (e) {
+        setLoading(true);
+        setError(null);
+
+        // You can pass any server-side filters here; example keeps your sort:
+        const res = await fetchAllReviews({ sortOrder: "desc" }, 100, 50);
+
+        if (Array.isArray(res.result) && res.result.length > 0) {
+          setReviews(res.result);
+        } else {
+          // If sandbox or empty, stick with mocks
+          console.info("Hostaway returned no reviews, keeping mocks");
+        }
+      } catch (e: any) {
         console.error("Hostaway fetch failed; using mocks", e);
+        setError(e?.message || "Failed to load reviews");
+      } finally {
+        setLoading(false);
       }
     })();
   }, []);

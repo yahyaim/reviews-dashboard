@@ -60,14 +60,19 @@ export const PropertyPerformance: React.FC<Props> = ({ data }) => {
 
   const fmt = (v: number | null | undefined) => (v == null ? "—" : v.toFixed(1));
 
-  const Delta = ({ v }: { v: number | null }) =>
-    v === null ? (
-      <span className="text-xs text-slate-500">—</span>
-    ) : v >= 0 ? (
-      <span className="inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">▲ {v.toFixed(1)}</span>
+  const Delta = ({ v }: { v: number | null | undefined }) => {
+    const num = typeof v === "number" && Number.isFinite(v) ? v : null;
+    if (num === null) return <span className="text-xs text-slate-500">—</span>;
+    return num >= 0 ? (
+      <span className="inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
+        ▲ {num.toFixed(1)}
+      </span>
     ) : (
-      <span className="inline-block rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-800">▼ {Math.abs(v).toFixed(1)}</span>
+      <span className="inline-block rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-800">
+        ▼ {Math.abs(num).toFixed(1)}
+      </span>
     );
+  };
 
   return (
     <Container className="mt-5">

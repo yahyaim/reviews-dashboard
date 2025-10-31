@@ -34,7 +34,7 @@ export const TrendsAndIssues: React.FC<Props> = ({ reviews }) => {
     <Container className="mt-5">
       <Card>
         <header className="flex items-baseline justify-between gap-3 border-b border-brand-border bg-[#fafafa] p-4">
-          <h2 className="text-base font-bold text-brand-text">Spot Trends & Recurring Issues</h2>
+          <h2 className="text-base font-bold text-brand-text">Trends & Recurring Issues</h2>
           <p className="text-sm text-brand-muted">Based on the current filters</p>
         </header>
 
