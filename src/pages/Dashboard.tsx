@@ -1,261 +1,191 @@
-import React, { useEffect, useMemo, useState } from "react";
-import * as XLSX from "xlsx";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
+import { ArrowDownTrayIcon, ArrowPathIcon, ChevronDownIcon, InformationCircleIcon } from "@heroicons/react/20/solid";
 import { Review } from "../types/review";
-import { mockReviews } from "../mocks/reviews";
-// import { fetchAllReviewsHostaway } from "../api/hostways";
-import { fetchAllReviews } from "../api/fetchReviews";
+import { useReviews } from "../hooks/useReviews";
+import { useApprovals } from "../hooks/useApprovals";
+import { useDashboardFilters } from "../hooks/useDashboardFilters";
 import { usePropertyPerformance } from "../hooks/usePropertyPerformance";
+import { filterReviews, hasActiveFilters, sortReviews } from "../lib/filterReviews";
+import { POSITIVE_THRESHOLD, effectiveRating, mean, round1 } from "../lib/reviews";
+import { exportReviewsToExcel } from "../lib/exportReviews";
 import { PropertyPerformance } from "../components/PropertyPerformance";
 import { TrendsAndIssues } from "../components/TrendsAndIssues";
 import { Filter } from "../components/Filter";
+import { KpiCards } from "../components/KpiCards";
 import { Reviews } from "../components/Reviews";
 import NavBar from "../components/NavBar";
-import { Container } from "../components/ui";
+import { Badge, Button, Container, Skeleton } from "../components/ui";
 
-type ChannelTab = "All" | "Hostaway" | "Google";
-type CategoryKey = "cleanliness" | "communication" | "respect_house_rules";
+const PAGE_SIZE = 10;
+const EMPTY: Review[] = [];
 
-const CATEGORIES: { key: CategoryKey; label: string }[] = [
-  { key: "cleanliness", label: "Cleanliness" },
-  { key: "communication", label: "Communication" },
-  { key: "respect_house_rules", label: "House Rules" },
-];
+const today = () => new Date().toISOString().slice(0, 10);
+
+const DashboardSkeleton = () => (
+  <div className="flex flex-col gap-5" aria-busy="true" aria-label="Loading reviews">
+    <Skeleton className="h-36 w-full rounded-xl" />
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {Array.from({ length: 4 }, (_, i) => (
+        <Skeleton key={i} className="h-24 rounded-xl" />
+      ))}
+    </div>
+    <Skeleton className="h-80 w-full rounded-xl" />
+  </div>
+);
 
 const Dashboard: React.FC = () => {
-  const [reviews, setReviews] = useState<Review[]>([]);
+  const data = useReviews();
+  const reviews = data.status === "ready" ? data.reviews : EMPTY;
+  const { isApproved, setApproved } = useApprovals();
+  const { filters, update, reset } = useDashboardFilters();
 
-  // Filters
-  const [query, setQuery] = useState("");
-  const [channel, setChannel] = useState<ChannelTab>("All");
-  const [ratingBand, setRatingBand] = useState<"All" | "10" | "9-8" | "<8">("All");
-  const [category, setCategory] = useState<"All" | CategoryKey>("All");
-  const [fromDate, setFromDate] = useState<string>("");
-  const [toDate, setToDate] = useState<string>("");
-  const [listing, setListing] = useState<"All" | string>("All");
+  // Keyed on the filters, so any filter change returns to page 1.
+  const filterKey = JSON.stringify(filters);
+  const [pageState, setPageState] = useState({ key: filterKey, page: 1 });
+  const page = pageState.key === filterKey ? pageState.page : 1;
+  const setPage = (p: number) => setPageState({ key: filterKey, page: p });
 
-  // Pagination
-  const [page, setPage] = useState(1);
+  const listingOptions = useMemo(
+    () => Array.from(new Set(reviews.map((r) => r.listingName).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    [reviews]
+  );
 
-  // Website visibility map
-  const [publicMap, setPublicMap] = useState<Record<number, boolean>>({});
-
-  const [, setLoading] = useState(true);
-  const [, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    // 1) Optimistic: show mocks immediately for perceived performance
-    setReviews(mockReviews);
-
-    // 2) Real fetch from server: /api/reviews (Edge function)
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // You can pass any server-side filters here; example keeps your sort:
-        const res = await fetchAllReviews({ sortOrder: "desc" }, 100, 50);
-
-        if (Array.isArray(res.result) && res.result.length > 0) {
-          setReviews(res.result);
-        } else {
-          // If sandbox or empty, stick with mocks
-          console.info("Hostaway returned no reviews, keeping mocks");
-        }
-      } catch (e: any) {
-        console.error("Hostaway fetch failed; using mocks", e);
-        setError(e?.message || "Failed to load reviews");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (!reviews?.length) return;
-    setPublicMap((prev) => {
-      const next = { ...prev };
-      for (const r of reviews) if (next[r.id] === undefined) next[r.id] = true;
-      return next;
-    });
-  }, [reviews]);
-
-  useEffect(() => { setPage(1); }, [query, channel, ratingBand, category, fromDate, toDate, listing]);
-
-  const safeDate = (s?: string) => (s ? (s.includes("T") ? s.split("T")[0] : s.split(" ")[0]) : "");
-
-  const inBand = (v: number) => {
-    if (ratingBand === "All") return true;
-    if (ratingBand === "10") return v === 10;
-    if (ratingBand === "9-8") return v >= 8 && v <= 9.999;
-    return v < 8;
-  };
-
-  const matchCategory = (r: Review) => {
-    if (category === "All") return true;
-    return !!r.reviewCategory?.find((c) => c.category === category);
-  };
-
-  const inDate = (s?: string) => {
-    if (!s) return true;
-    const d = safeDate(s);
-    if (fromDate && d < fromDate) return false;
-    if (toDate && d > toDate) return false;
-    return true;
-  };
-
-  const listingOptions = useMemo(() => {
-    const set = new Set<string>();
-    for (const r of reviews) if (r.listingName) set.add(r.listingName);
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [reviews]);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return reviews.filter((r) => {
-      const src = r.source ?? "Hostaway";
-      const matchChannel = channel === "All" ? true : src === channel;
-      const matchListing = listing === "All" ? true : (r.listingName || "") === listing;
-      const hay = `${r.guestName} ${r.listingName} ${r.publicReview}`.toLowerCase();
-      const matchQ = q ? hay.includes(q) : true;
-      const v = r.rating ?? 0;
-      return matchChannel && matchListing && matchQ && inBand(v) && matchCategory(r) && inDate(r.submittedAt);
-    });
-  }, [reviews, query, channel, ratingBand, category, fromDate, toDate, listing]);
-
-  const stats = useMemo(() => {
-    const total = filtered.length;
-    const ratings = filtered.map((r) => r.rating ?? 0);
-    const avg = ratings.length ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10 : 0;
-    const positivePct = total === 0 ? 0 : Math.round((filtered.filter((r) => (r.rating ?? 0) >= 9).length / total) * 100);
-    return { total, avg, positivePct };
-  }, [filtered]);
-
+  const filtered = useMemo(() => filterReviews(reviews, filters, isApproved), [reviews, filters, isApproved]);
+  const sorted = useMemo(() => sortReviews(filtered, filters.sort), [filtered, filters.sort]);
   const perf = usePropertyPerformance(filtered);
 
-  // ---- Export helpers ----
-  type Row = {
-    ID: number | string;
-    Guest: string;
-    Listing: string;
-    Rating: number | string;
-    Cleanliness: number | string;
-    Communication: number | string;
-    HouseRules: number | string;
-    Source: string;
-    Date: string;
-    Public: "Public" | "Hidden";
-    Review: string;
+  const stats = useMemo(() => {
+    const ratings = filtered.map(effectiveRating).filter((v): v is number => v !== null);
+    const avg = mean(ratings);
+    return {
+      total: filtered.length,
+      avg: avg === null ? null : round1(avg),
+      positivePct: ratings.length
+        ? Math.round((ratings.filter((v) => v >= POSITIVE_THRESHOLD).length / ratings.length) * 100)
+        : null,
+      onWebsite: filtered.filter((r) => isApproved(r.id)).length,
+    };
+  }, [filtered, isApproved]);
+
+  // Scroll once the filtered list has rendered; measuring earlier lands mid-list.
+  const scrollToReviews = useRef(false);
+  useEffect(() => {
+    if (!scrollToReviews.current) return;
+    scrollToReviews.current = false;
+    document.getElementById("reviews")?.scrollIntoView({ behavior: "smooth" });
+  }, [filters.listing]);
+
+  const drillIntoListing = (listing: string) => {
+    if (listing === filters.listing) {
+      document.getElementById("reviews")?.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
+    scrollToReviews.current = true;
+    update({ listing });
   };
 
-  type CategoryKeyLocal = "cleanliness" | "communication" | "respect_house_rules";
-  const getCategoryScore = (r: Review, key: CategoryKeyLocal) =>
-    r.reviewCategory?.find((c) => c.category === key)?.rating ?? "";
-
-  const toRows = (input: Review[]): Row[] =>
-    input.map((r) => ({
-      ID: r.id,
-      Guest: r.guestName || "",
-      Listing: r.listingName || "",
-      Rating: r.rating ?? "",
-      Cleanliness: getCategoryScore(r, "cleanliness"),
-      Communication: getCategoryScore(r, "communication"),
-      HouseRules: getCategoryScore(r, "respect_house_rules"),
-      Source: r.source ?? "Hostaway",
-      Date: safeDate(r.submittedAt),
-      Public: publicMap[r.id] ? "Public" : "Hidden",
-      Review: r.publicReview || "",
-    }));
-
-  const exportToExcel = (rows: Row[], filename: string) => {
-    const wb = XLSX.utils.book_new();
-    const headerOrder = [
-      "ID","Guest","Listing","Rating","Cleanliness","Communication","HouseRules","Source","Date","Public","Review",
-    ] as const;
-    const ordered = rows.map((r) => {
-      const o: any = {};
-      headerOrder.forEach((k) => (o[k] = (r as any)[k]));
-      return o;
-    });
-    const ws = XLSX.utils.json_to_sheet(ordered);
-    (ws as any)["!cols"] = [
-      { wch: 8 }, { wch: 24 }, { wch: 28 }, { wch: 8 },
-      { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 12 },
-      { wch: 12 }, { wch: 10 }, { wch: 60 }
-    ];
-    XLSX.utils.book_append_sheet(wb, ws, "Reviews");
-    XLSX.writeFile(wb, filename);
-  };
-
-  const PAGE_SIZE = 6;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const startIdx = (currentPage - 1) * PAGE_SIZE;
-  const endIdx = startIdx + PAGE_SIZE;
-  const pageRows = filtered.slice(startIdx, endIdx);
-
-  const exportCurrentPage = () => exportToExcel(toRows(pageRows), "reviews_current_page.xlsx");
-  const exportFiltered = () => exportToExcel(toRows(filtered), "reviews_filtered.xlsx");
-  const exportAll = () => exportToExcel(toRows(reviews), "reviews_all.xlsx");
-
-  const activeChips = [
-    channel !== "All" && { label: `Channel: ${channel}`, onRemove: () => setChannel("All") },
-    ratingBand !== "All" && { label: `Rating: ${ratingBand}`, onRemove: () => setRatingBand("All") },
-    category !== "All" && { label: `Category: ${CATEGORIES.find((c) => c.key === category)?.label}`, onRemove: () => setCategory("All") },
-    listing !== "All" && { label: `Listing: ${listing}`, onRemove: () => setListing("All") },
-    fromDate && { label: `From: ${fromDate}`, onRemove: () => setFromDate("") },
-    toDate && { label: `To: ${toDate}`, onRemove: () => setToDate("") },
-    query && { label: `Search: “${query}”`, onRemove: () => setQuery("") },
-  ].filter(Boolean) as { label: string; onRemove: () => void }[];
-
-  const resetAll = () => {
-    setQuery(""); setChannel("All"); setRatingBand("All"); setCategory("All");
-    setFromDate(""); setToDate(""); setListing("All");
-  };
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(sorted.length / PAGE_SIZE)));
+  const pageRows = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const exports = [
+    { label: "Current page", hint: `${pageRows.length} reviews`, rows: pageRows, name: "page" },
+    { label: "Filtered results", hint: `${sorted.length} reviews`, rows: sorted, name: "filtered" },
+    { label: "All reviews", hint: `${reviews.length} reviews`, rows: reviews, name: "all" },
+  ];
 
   return (
     <div className="flex min-h-screen flex-col">
       <NavBar />
 
-      {/* Page padding and rhythm */}
-      <main className="flex flex-col gap-5 py-4">
-        <Filter
-          query={query} setQuery={setQuery}
-          channel={channel} setChannel={setChannel}
-          ratingBand={ratingBand} setRatingBand={setRatingBand}
-          category={category} setCategory={setCategory}
-          fromDate={fromDate} setFromDate={setFromDate}
-          toDate={toDate} setToDate={setToDate}
-          listing={listing} setListing={setListing}
-          categoryOptions={CATEGORIES}
-          listingOptions={listingOptions}
-          activeChips={activeChips}
-          resetAll={resetAll}
-          onExportCurrentPage={exportCurrentPage}
-          onExportFiltered={exportFiltered}
-          onExportAll={exportAll}
-        />
+      <main className="pb-12 pt-6">
+        <Container className="flex flex-col gap-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-brand-text">Guest reviews</h1>
+              <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-brand-muted">
+                Monitor feedback across your properties and pick what goes on the website.
+                {data.status === "ready" &&
+                  (data.source === "live" ? (
+                    <Badge className="bg-emerald-50 text-emerald-800">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Live · Hostaway
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-amber-50 text-amber-800">Sample data</Badge>
+                  ))}
+              </p>
+            </div>
 
-        {/* KPI cards */}
-        <Container>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="rounded-xl border border-brand-border bg-white p-4 shadow-card">
-              <div className="text-xs text-brand-muted">Total Reviews</div>
-              <div className="mt-1 flex items-baseline gap-2 text-2xl font-bold text-brand-accent">{stats.total}</div>
-            </div>
-            <div className="rounded-xl border border-brand-border bg-white p-4 shadow-card">
-              <div className="text-xs text-brand-muted">Average Rating</div>
-              <div className="mt-1 flex items-baseline gap-2 text-2xl font-bold text-brand-accent">{stats.avg}</div>
-            </div>
-            <div className="rounded-xl border border-brand-border bg-white p-4 shadow-card">
-              <div className="text-xs text-brand-muted">Positive (≥9)</div>
-              <div className="mt-1 flex items-baseline gap-2 text-2xl font-bold text-brand-accent">{stats.positivePct}%</div>
-            </div>
+            <Menu as="div" className="relative">
+              <MenuButton as={Button} variant="primary" disabled={data.status !== "ready"}>
+                <ArrowDownTrayIcon className="h-4 w-4" aria-hidden />
+                Export
+                <ChevronDownIcon className="h-4 w-4" aria-hidden />
+              </MenuButton>
+              <MenuItems
+                anchor="bottom end"
+                className="z-40 mt-1 w-56 rounded-lg border border-brand-border bg-white p-1 shadow-lg focus:outline-none"
+              >
+                {exports.map((x) => (
+                  <MenuItem key={x.name}>
+                    <button
+                      type="button"
+                      onClick={() => exportReviewsToExcel(x.rows, isApproved, `reviews-${x.name}-${today()}.xlsx`)}
+                      disabled={x.rows.length === 0}
+                      className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm text-brand-text data-[focus]:bg-brand-bg disabled:opacity-50"
+                    >
+                      {x.label}
+                      <span className="text-xs text-brand-muted">{x.hint}</span>
+                    </button>
+                  </MenuItem>
+                ))}
+              </MenuItems>
+            </Menu>
           </div>
-        </Container>
 
-        <PropertyPerformance data={perf} />
-        <TrendsAndIssues reviews={filtered} />
-        <Reviews reviews={filtered} page={page} setPage={setPage} publicMap={publicMap} setPublicMap={setPublicMap} />
+          {data.status === "ready" && data.notice && (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <InformationCircleIcon className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="flex-1">{data.notice}</span>
+              <Button size="sm" variant="ghost" className="text-amber-900" onClick={data.retry}>
+                <ArrowPathIcon className="h-3.5 w-3.5" aria-hidden /> Retry
+              </Button>
+            </div>
+          )}
+
+          {data.status === "loading" ? (
+            <DashboardSkeleton />
+          ) : (
+            <>
+              <Filter filters={filters} update={update} reset={reset} listingOptions={listingOptions} />
+
+              <KpiCards {...stats} />
+
+              {filtered.length === 0 && hasActiveFilters(filters) ? (
+                <div className="rounded-xl border border-dashed border-brand-border bg-white/60 px-4 py-12 text-center">
+                  <p className="font-medium text-brand-text">No reviews match these filters</p>
+                  <Button className="mt-3" onClick={reset}>
+                    Clear filters
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <PropertyPerformance data={perf} onSelect={drillIntoListing} />
+                  <TrendsAndIssues reviews={filtered} onSelectListing={drillIntoListing} />
+                  <Reviews
+                    reviews={sorted}
+                    page={currentPage}
+                    pageSize={PAGE_SIZE}
+                    setPage={setPage}
+                    sort={filters.sort}
+                    setSort={(sort) => update({ sort })}
+                    isApproved={isApproved}
+                    setApproved={setApproved}
+                  />
+                </>
+              )}
+            </>
+          )}
+        </Container>
       </main>
     </div>
   );

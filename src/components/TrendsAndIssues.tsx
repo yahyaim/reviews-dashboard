@@ -1,153 +1,176 @@
 import React from "react";
-import { Card, Container } from "./ui";
+import { ExclamationTriangleIcon } from "@heroicons/react/20/solid";
+import { Card, CardHeader } from "./ui";
 import { Review } from "../types/review";
 import { useTrends } from "../hooks/useTrends";
+import { categoryLabel } from "../lib/reviews";
 
-const Sparkline: React.FC<{ values: number[] }> = ({ values }) => {
-  if (!values.length) return <div className="text-sm text-slate-500">—</div>;
+const monthLabel = (m?: string) => {
+  if (!m) return "";
+  const [y, mo] = m.split("-").map(Number);
+  return new Date(y, mo - 1, 1).toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+};
+
+const Sparkline: React.FC<{ values: number[]; label: string }> = ({ values, label }) => {
+  if (values.length < 2) return <div className="flex h-12 items-center text-sm text-brand-muted">Not enough data</div>;
   const w = 180, h = 48, pad = 4;
   const min = Math.min(...values), max = Math.max(...values);
   const range = max - min || 1;
-  const step = (w - pad * 2) / Math.max(1, values.length - 1);
-  const points = values.map((v, i) => {
-    const x = pad + i * step;
-    const y = h - pad - ((v - min) / range) * (h - pad * 2);
-    return `${x},${y}`;
-  }).join(" ");
+  const step = (w - pad * 2) / (values.length - 1);
+  const points = values.map((v, i) => `${pad + i * step},${h - pad - ((v - min) / range) * (h - pad * 2)}`);
   return (
-    <svg className="h-12 w-full text-slate-900" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden>
-      <polyline fill="none" stroke="currentColor" strokeWidth="2" points={points} />
+    <svg className="h-12 w-full text-brand-accent" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" role="img" aria-label={label}>
+      <polygon fill="currentColor" opacity="0.08" points={`${pad},${h} ${points.join(" ")} ${w - pad},${h}`} />
+      <polyline fill="none" stroke="currentColor" strokeWidth="1.75" vectorEffect="non-scaling-stroke" points={points.join(" ")} />
     </svg>
   );
 };
 
-type Props = { reviews: Review[] };
+const TrendTile = ({
+  title,
+  values,
+  months,
+  format,
+}: {
+  title: string;
+  values: number[];
+  months: string[];
+  format: (v: number) => string;
+}) => (
+  <div className="rounded-lg border border-brand-border/70 p-3">
+    <div className="mb-1 flex items-baseline justify-between gap-2">
+      <span className="text-xs font-medium text-brand-muted">{title}</span>
+      {values.length > 0 && (
+        <span className="text-sm font-semibold tabular-nums text-brand-text">{format(values[values.length - 1])}</span>
+      )}
+    </div>
+    <Sparkline values={values} label={`${title} by month`} />
+    <div className="mt-1 flex justify-between text-[11px] text-brand-muted">
+      <span>{monthLabel(months[0])}</span>
+      <span>{monthLabel(months[months.length - 1])}</span>
+    </div>
+  </div>
+);
 
-export const TrendsAndIssues: React.FC<Props> = ({ reviews }) => {
+const TermList = ({ title, items, empty }: { title: string; items: { term: string; count: number }[]; empty: string }) => (
+  <div className="rounded-lg border border-brand-border/70 p-3">
+    <h3 className="mb-2 text-sm font-semibold text-brand-text">{title}</h3>
+    {items.length === 0 ? (
+      <p className="text-sm text-brand-muted">{empty}</p>
+    ) : (
+      <div className="flex flex-wrap gap-1.5">
+        {items.map((k) => (
+          <span key={k.term} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+            {k.term}
+            <b className="tabular-nums text-slate-900">{k.count}</b>
+          </span>
+        ))}
+      </div>
+    )}
+  </div>
+);
+
+type Props = { reviews: Review[]; onSelectListing: (listing: string) => void };
+
+export const TrendsAndIssues: React.FC<Props> = ({ reviews, onSelectListing }) => {
   const { series, negativeShare, topKeywords, topBigrams, categoryDeltas, watchlist, listingsWithIssues } =
     useTrends(reviews);
 
-  const avgSeries = series.map((s) => s.avg);
-  const negSeries = negativeShare.map((s) => s.share);
+  const rated = series.filter((s): s is typeof s & { avg: number } => s.avg !== null);
 
   return (
-    <Container className="mt-5">
-      <Card>
-        <header className="flex items-baseline justify-between gap-3 border-b border-brand-border bg-[#fafafa] p-4">
-          <h2 className="text-base font-bold text-brand-text">Trends & Recurring Issues</h2>
-          <p className="text-sm text-brand-muted">Based on the current filters</p>
-        </header>
+    <Card>
+      <CardHeader title="Trends & recurring issues" subtitle="Based on the current filters." />
 
-        {/* Alerts */}
-        {watchlist.length > 0 && (
-          <div className="grid gap-2 p-4 pt-3">
-            {watchlist.map((w, i) => (
-              <div
-                key={i}
-                className={`flex items-center gap-2 rounded-lg border p-3 text-sm ${
-                  w.type === "drop"
-                    ? "border-rose-200 bg-rose-50 text-rose-800"
-                    : "border-amber-200 bg-amber-50 text-amber-800"
-                }`}
-              >
-                <span className="text-xs">●</span>
-                {w.message}
-              </div>
-            ))}
-          </div>
-        )}
+      {watchlist.length > 0 && (
+        <ul className="grid gap-2 px-4 pt-4">
+          {watchlist.map((w) => (
+            <li
+              key={w.message}
+              className={`flex items-start gap-2 rounded-lg border p-3 text-sm ${
+                w.type === "drop" ? "border-rose-200 bg-rose-50 text-rose-800" : "border-amber-200 bg-amber-50 text-amber-800"
+              }`}
+            >
+              <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              {w.message}
+            </li>
+          ))}
+        </ul>
+      )}
 
-        {/* KPIs */}
-        <div className="grid gap-3 p-4 lg:grid-cols-[220px_220px_1fr]">
-          <Card className="p-3">
-            <div className="mb-1 text-xs text-brand-muted">Avg rating (trend)</div>
-            <Sparkline values={avgSeries} />
-            <div className="mt-1 text-xs text-brand-muted">
-              {series.length ? `${series[0].month} → ${series[series.length - 1].month}` : "—"}
-            </div>
-          </Card>
+      <div className="grid gap-3 p-4 md:grid-cols-2 lg:grid-cols-[1fr_1fr_1.4fr]">
+        <TrendTile
+          title="Average rating"
+          values={rated.map((s) => s.avg)}
+          months={rated.map((s) => s.month)}
+          format={(v) => v.toFixed(1)}
+        />
+        <TrendTile
+          title="Negative reviews"
+          values={negativeShare.map((s) => s.share)}
+          months={negativeShare.map((s) => s.month)}
+          format={(v) => `${Math.round(v)}%`}
+        />
 
-          <Card className="p-3">
-            <div className="mb-1 text-xs text-brand-muted">Negative share %</div>
-            <Sparkline values={negSeries} />
-            <div className="mt-1 text-xs text-brand-muted">
-              {negativeShare.length ? `${negativeShare[0].month} → ${negativeShare[negativeShare.length - 1].month}` : "—"}
-            </div>
-          </Card>
-
-          <Card className="p-3">
-            <div className="mb-2 text-xs text-brand-muted">Category Δ (last vs prev month)</div>
-            <div className="grid gap-1">
-              <div className="grid grid-cols-[1.2fr_.6fr_.6fr_.4fr] items-center gap-2 border-b border-dashed border-brand-border pb-1 text-xs font-semibold text-slate-600">
-                <span>Category</span><span>Prev</span><span>Last</span><span>Δ</span>
-              </div>
+        <div className="rounded-lg border border-brand-border/70 p-3 md:col-span-2 lg:col-span-1">
+          <p className="mb-2 text-xs font-medium text-brand-muted">Category scores, latest month vs previous</p>
+          <table className="w-full text-sm">
+            <thead className="text-xs text-brand-muted">
+              <tr>
+                <th className="pb-1 text-left font-medium">Category</th>
+                <th className="pb-1 text-right font-medium">Prev</th>
+                <th className="pb-1 text-right font-medium">Latest</th>
+                <th className="pb-1 text-right font-medium">Change</th>
+              </tr>
+            </thead>
+            <tbody className="tabular-nums">
               {categoryDeltas.map((c) => (
-                <div key={c.key} className="grid grid-cols-[1.2fr_.6fr_.6fr_.4fr] items-center gap-2 text-sm">
-                  <span className="capitalize text-slate-700">{c.key.replace(/_/g," ")}</span>
-                  <span>{c.prev ?? "—"}</span>
-                  <span>{c.last ?? "—"}</span>
-                  <span className={`${c.delta !== null && c.delta < 0 ? "text-rose-800" : "text-emerald-800"}`}>
-                    {c.delta !== null ? (c.delta > 0 ? `+${c.delta}` : `${c.delta}`) : "—"}
-                  </span>
-                </div>
+                <tr key={c.key} className="border-t border-brand-border/40">
+                  <td className="py-1 text-slate-700">{categoryLabel(c.key)}</td>
+                  <td className="py-1 text-right">{c.prev?.toFixed(1) ?? "—"}</td>
+                  <td className="py-1 text-right">{c.last?.toFixed(1) ?? "—"}</td>
+                  <td
+                    className={`py-1 text-right font-medium ${
+                      c.delta === null || c.delta === 0 ? "text-brand-muted" : c.delta < 0 ? "text-rose-700" : "text-emerald-700"
+                    }`}
+                  >
+                    {c.delta === null ? "—" : c.delta > 0 ? `+${c.delta.toFixed(1)}` : c.delta.toFixed(1)}
+                  </td>
+                </tr>
               ))}
-            </div>
-          </Card>
+            </tbody>
+          </table>
         </div>
+      </div>
 
-        {/* Issues grid */}
-        <div className="grid gap-3 p-4 lg:grid-cols-3">
-          <Card className="p-3">
-            <div className="mb-2 text-sm font-bold text-brand-text">Recurring keywords (neg./neutral)</div>
-            <div className="flex flex-wrap gap-2">
-              {topKeywords.length === 0 ? (
-                <span className="text-sm text-brand-muted">No data</span>
-              ) : (
-                topKeywords.map(k => (
-                  <span key={k.term} className="inline-flex items-center gap-1 rounded-full border border-brand-border bg-slate-100 px-2 py-1 text-xs text-slate-700">
-                    <span>{k.term}</span>
-                    <b className="text-slate-900">{k.count}</b>
-                  </span>
-                ))
-              )}
-            </div>
-          </Card>
+      <div className="grid gap-3 px-4 pb-4 md:grid-cols-2 lg:grid-cols-3">
+        <TermList title="Recurring words in lower-rated reviews" items={topKeywords} empty="Nothing stands out." />
+        <TermList title="Common phrases" items={topBigrams} empty="Nothing stands out." />
 
-          <Card className="p-3">
-            <div className="mb-2 text-sm font-bold text-brand-text">Common 2-word phrases</div>
-            <div className="flex flex-wrap gap-2">
-              {topBigrams.length === 0 ? (
-                <span className="text-sm text-brand-muted">No data</span>
-              ) : (
-                topBigrams.map(k => (
-                  <span key={k.term} className="inline-flex items-center gap-1 rounded-full border border-brand-border bg-slate-100 px-2 py-1 text-xs text-slate-700">
-                    <span>{k.term}</span>
-                    <b className="text-slate-900">{k.count}</b>
-                  </span>
-                ))
-              )}
-            </div>
-          </Card>
-
-          <Card className="p-3">
-            <div className="mb-2 text-sm font-bold text-brand-text">Listings with most negatives</div>
-            <ul className="grid gap-2">
-              {listingsWithIssues.length === 0 ? (
-                <li className="text-sm text-brand-muted">No negatives found</li>
-              ) : (
-                listingsWithIssues.map((l) => (
-                  <li key={l.listing} className="flex items-center justify-between">
-                    <span className="max-w-[70%] truncate text-sm text-brand-text">{l.listing}</span>
-                    <span className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-800">
+        <div className="rounded-lg border border-brand-border/70 p-3 md:col-span-2 lg:col-span-1">
+          <h3 className="mb-2 text-sm font-semibold text-brand-text">Listings with most negative reviews</h3>
+          {listingsWithIssues.length === 0 ? (
+            <p className="text-sm text-brand-muted">No negative reviews in this view.</p>
+          ) : (
+            <ul className="grid gap-1">
+              {listingsWithIssues.map((l) => (
+                <li key={l.listing}>
+                  <button
+                    type="button"
+                    onClick={() => onSelectListing(l.listing)}
+                    className="flex w-full items-center justify-between gap-2 rounded-md px-1.5 py-1 text-left hover:bg-brand-bg/60"
+                  >
+                    <span className="truncate text-sm text-brand-text">{l.listing}</span>
+                    <span className="rounded-md bg-rose-50 px-2 py-0.5 text-xs font-bold tabular-nums text-rose-800">
                       {l.negatives}
                     </span>
-                  </li>
-                ))
-              )}
+                  </button>
+                </li>
+              ))}
             </ul>
-          </Card>
+          )}
         </div>
-      </Card>
-    </Container>
+      </div>
+    </Card>
   );
 };

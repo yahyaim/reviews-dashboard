@@ -3,13 +3,5 @@
   "references": [
     { "path": "./tsconfig.app.json" },
     { "path": "./tsconfig.node.json" }
-  ],
-  "compilerOptions": {
-     "jsx": "react-jsx",
-     "types": ["node"],
-    // "target": "ES2021",
-    // "lib": ["DOM", "ES2021"],
-  },
-  "noUnusedLocals": false,
-  "noUnusedParameters": false
+  ]
 }

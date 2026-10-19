@@ -1,115 +1,153 @@
-import React from "react";
-import { Card, Container } from "./ui";
+import React, { useState } from "react";
+import { Card, CardHeader, Badge, Button, Pagination, ScoreBadge, Select, Toggle } from "./ui";
 import { Review } from "../types/review";
+import { SORT_OPTIONS, type SortKey } from "../lib/filterReviews";
+import { categoryLabel, effectiveRating, formatDate, scoreTone } from "../lib/reviews";
 
 type Props = {
+  /** Already filtered and sorted. */
   reviews: Review[];
   page: number;
+  pageSize: number;
   setPage: (n: number) => void;
-  publicMap: Record<number, boolean>;
-  setPublicMap: React.Dispatch<React.SetStateAction<Record<number, boolean>>>;
+  sort: SortKey;
+  setSort: (s: SortKey) => void;
+  isApproved: (id: Review["id"]) => boolean;
+  setApproved: (ids: Review["id"][], value: boolean) => void;
 };
 
-const PAGE_SIZE = 6;
-const safeDate = (s?: string) => (s ? (s.includes("T") ? s.split("T")[0] : s.split(" ")[0]) : "");
+const ReviewText = ({ text }: { text: string }) => {
+  const [open, setOpen] = useState(false);
+  if (!text) return <p className="text-sm italic text-brand-muted">No written review.</p>;
+  const long = text.length > 180;
+  return (
+    <p className="text-sm leading-relaxed text-slate-700">
+      <span className={!open && long ? "line-clamp-2" : undefined}>{text}</span>
+      {long && (
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="mt-0.5 text-xs font-medium text-brand-accent hover:underline"
+        >
+          {open ? "Show less" : "Show more"}
+        </button>
+      )}
+    </p>
+  );
+};
 
-export const Reviews: React.FC<Props> = ({ reviews, page, setPage, publicMap, setPublicMap }) => {
-  const totalPages = Math.max(1, Math.ceil(reviews.length / PAGE_SIZE));
+export const Reviews: React.FC<Props> = ({
+  reviews,
+  page,
+  pageSize,
+  setPage,
+  sort,
+  setSort,
+  isApproved,
+  setApproved,
+}) => {
+  const totalPages = Math.max(1, Math.ceil(reviews.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const startIdx = (currentPage - 1) * PAGE_SIZE;
-  const endIdx = startIdx + PAGE_SIZE;
-  const pageRows = reviews.slice(startIdx, endIdx);
+  const pageRows = reviews.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const pageIds = pageRows.map((r) => r.id);
+  const approvedOnPage = pageIds.filter(isApproved).length;
 
   return (
-    <Container className="mt-4">
-      <Card>
-        <div className="grid grid-cols-[1.1fr_1.4fr_.6fr_1.3fr_.8fr_.8fr_1.1fr] items-center gap-3 border-b border-brand-border bg-[#fbfaf6] p-3 text-xs font-semibold text-brand-muted">
-          <span>Guest</span>
-          <span>Listing</span>
-          <span>Rating</span>
-          <span>Categories</span>
-          <span>Source</span>
-          <span>Date</span>
-          <span>Show on Website</span>
-        </div>
+    <Card id="reviews" className="scroll-mt-20">
+      <CardHeader
+        title="Reviews"
+        subtitle="Choose which reviews appear on the public website. Reviews stay hidden until you approve them."
+      >
+        <label htmlFor="r-sort" className="sr-only">
+          Sort reviews
+        </label>
+        <Select id="r-sort" value={sort} onChange={(e) => setSort(e.target.value as SortKey)} className="w-40">
+          {SORT_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </Select>
+      </CardHeader>
 
-        {pageRows.length === 0 ? (
-          <div className="p-6 text-center text-sm text-brand-muted">No reviews match your filters.</div>
-        ) : (
-          pageRows.map((r) => {
-            const twoCats = (r.reviewCategory ?? []).slice(0, 2);
+      {pageRows.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-brand-border/60 bg-brand-bg/40 px-4 py-2 text-xs text-brand-muted">
+          <span>
+            {approvedOnPage} of {pageRows.length} on this page shown on website
+          </span>
+          <div className="flex gap-1">
+            <Button size="sm" variant="ghost" onClick={() => setApproved(pageIds, true)} disabled={approvedOnPage === pageRows.length}>
+              Show all on page
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setApproved(pageIds, false)} disabled={approvedOnPage === 0}>
+              Hide all on page
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {pageRows.length === 0 ? (
+        <div className="px-4 py-12 text-center">
+          <p className="font-medium text-brand-text">No reviews match your filters</p>
+          <p className="mt-1 text-sm text-brand-muted">Try widening the date range or clearing a filter.</p>
+        </div>
+      ) : (
+        <ul className="divide-y divide-brand-border/50">
+          {pageRows.map((r) => {
+            const approved = isApproved(r.id);
             return (
-              <div key={r.id} className="grid grid-cols-[1.1fr_1.4fr_.6fr_1.3fr_.8fr_.8fr_1.1fr] items-center gap-3 border-t border-[#eee6d6] p-3 hover:bg-[#faf6ee]">
-                <div className="text-sm font-semibold text-brand-text">{r.guestName}</div>
-                <div className="text-sm">{r.listingName}</div>
-                <div className="text-sm">{r.rating ?? "-"}</div>
-                <div className="text-sm">
-                  {twoCats.length ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {twoCats.map((c) => (
-                        <span key={c.category} className="inline-flex items-center gap-1 rounded-full border border-brand-border bg-[#f2ede1] px-2 py-1 text-xs">
-                          <span className="capitalize text-slate-700">{c.category.replace(/_/g, " ")}</span>
-                          <strong className="text-brand-accent">{c.rating}/10</strong>
-                        </span>
+              <li key={r.id} className="flex gap-3 px-4 py-4 sm:gap-4">
+                <ScoreBadge value={effectiveRating(r)} className="mt-0.5 h-8 shrink-0" />
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <span className="font-semibold text-brand-text">{r.guestName || "Guest"}</span>
+                    <span className="truncate text-sm text-brand-muted">{r.listingName}</span>
+                  </div>
+                  <p className="mb-1.5 text-xs text-brand-muted">
+                    {formatDate(r.submittedAt)} · {r.source ?? "Hostaway"}
+                  </p>
+
+                  <ReviewText text={r.publicReview} />
+
+                  {r.reviewCategory?.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {r.reviewCategory.map((c) => (
+                        <Badge key={c.category} className={`ring-1 ring-inset ${scoreTone(c.rating)}`}>
+                          {categoryLabel(c.category)}
+                          <b className="tabular-nums">{c.rating}</b>
+                        </Badge>
                       ))}
-                      {(r.reviewCategory?.length ?? 0) > 2 && (
-                        <span className="text-xs text-brand-muted">+{(r.reviewCategory?.length ?? 0) - 2} more</span>
-                      )}
                     </div>
-                  ) : (
-                    "-"
                   )}
                 </div>
-                <div className="text-sm">
-                  <span className="inline-block rounded-full border border-[#d6e3e2] bg-[#e8f0ef] px-2 py-1 text-xs text-brand-accent">
-                    {r.source ?? "Hostaway"}
+
+                <div className="flex shrink-0 flex-col items-end gap-1 pt-0.5">
+                  <Toggle
+                    checked={approved}
+                    onChange={(v) => setApproved([r.id], v)}
+                    label={`Show review by ${r.guestName || "guest"} on website`}
+                  />
+                  <span className={`text-xs ${approved ? "font-medium text-brand-accent" : "text-brand-muted"}`}>
+                    {approved ? "On website" : "Hidden"}
                   </span>
                 </div>
-                <div className="text-sm">{safeDate(r.submittedAt)}</div>
-                <div className="text-sm">
-                  <label className="inline-flex select-none items-center gap-2">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 accent-brand-accent"
-                      checked={!!publicMap[r.id]}
-                      onChange={(e) => setPublicMap((m) => ({ ...m, [r.id]: e.target.checked }))}
-                    />
-                    <span>{publicMap[r.id] ? "Public" : "Hidden"}</span>
-                  </label>
-                </div>
-              </div>
+              </li>
             );
-          })
-        )}
+          })}
+        </ul>
+      )}
 
-        {/* Pagination */}
-        <div className="grid grid-cols-[1fr_auto] items-center gap-3 p-4">
-          <div className="text-sm text-brand-muted">
-            {reviews.length === 0 ? "0–0 of 0" : `${startIdx + 1}–${Math.min(endIdx, reviews.length)} of ${reviews.length}`}
-          </div>
-          <div className="justify-self-end">
-            <div className="inline-flex items-center gap-2">
-              <button
-                className="h-9 rounded-lg border border-brand-border bg-white px-3 text-sm disabled:opacity-50"
-                onClick={() => setPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage <= 1}
-                aria-label="Previous page"
-              >
-                ‹
-              </button>
-              <span className="text-sm text-brand-accent">{currentPage} / {totalPages}</span>
-              <button
-                className="h-9 rounded-lg border border-brand-border bg-white px-3 text-sm disabled:opacity-50"
-                onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage >= totalPages}
-                aria-label="Next page"
-              >
-                ›
-              </button>
-            </div>
-          </div>
-        </div>
-      </Card>
-    </Container>
+      <div className="border-t border-brand-border/60">
+        <Pagination
+          page={currentPage}
+          totalPages={totalPages}
+          total={reviews.length}
+          pageSize={pageSize}
+          onChange={setPage}
+          noun="reviews"
+        />
+      </div>
+    </Card>
   );
 };

@@ -6,6 +6,7 @@ export interface ReviewCategory {
 export interface ReviewsResponse {
   status: "success" | "error";
   result: Review[];
+  message?: string;
 }
 
 export type ReviewSource = "Hostaway" | "Google";
@@ -15,15 +16,14 @@ export interface Review {
   id: number;
   type: string;     // "host-to-guest"
   status: string;   // "published"
+  /** Overall score on a 0–10 scale. Some channels omit it; use `effectiveRating()` when reading. */
   rating: number | null;
   publicReview: string;
   reviewCategory: ReviewCategory[];
   submittedAt: string;
   guestName: string;
   listingName: string;
-
-  // NEW (optional so you don't break existing data)
-  source?: "Hostaway" | "Google";
+  source?: ReviewSource;
 }
 
 export interface ReviewCategoryScore {

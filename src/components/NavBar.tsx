@@ -1,27 +1,29 @@
-import { Link, useLocation } from "react-router-dom";
+import { NavLink } from "react-router-dom";
+import { cn } from "../lib/cn";
 
-/** Unified NavBar — matches Testimonials page */
+const BRAND_NAME = "Company Living";
+
 const NavBar = () => {
-  const { pathname } = useLocation();
-  const cls = (to: string) =>
-    `inline-flex items-center h-9 px-3 rounded-md text-sm no-underline transition-colors ${
-      pathname === to
-        ? "font-semibold text-[#284e4c]"
-        : "hover:text-[#284e4c] text-gray-800"
-    }`;
+  const cls = ({ isActive }: { isActive: boolean }) =>
+    cn(
+      "inline-flex h-9 items-center rounded-md px-3 text-sm transition-colors",
+      isActive ? "bg-brand-accent/10 font-semibold text-brand-accent" : "text-slate-700 hover:text-brand-accent"
+    );
 
   return (
-    <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/90 backdrop-blur">
-      <div className="mx-auto max-w-6xl px-4 md:px-8 h-14 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-md" style={{ backgroundColor: "#284e4c" }} />
-          <span className="font-semibold text-gray-900">Company Living </span>
-
-        </div>
-
-        <nav className="flex items-center gap-2">
-          <Link to="/" className={cls("/")}>Dashboard</Link>
-          <Link to="/testimonials" className={cls("/testimonials")}>Testimonials</Link>
+    <header className="sticky top-0 z-30 border-b border-brand-border/70 bg-white/90 backdrop-blur">
+      <div className="mx-auto flex h-14 max-w-container items-center justify-between gap-3 px-4 md:px-6">
+        <NavLink to="/" className="flex min-w-0 items-center gap-2">
+          <span className="h-7 w-7 shrink-0 rounded-md bg-brand-accent" aria-hidden />
+          <span className="truncate font-semibold text-brand-text">{BRAND_NAME}</span>
+        </NavLink>
+        <nav className="flex items-center gap-1" aria-label="Main">
+          <NavLink to="/" end className={cls}>
+            Dashboard
+          </NavLink>
+          <NavLink to="/testimonials" className={cls}>
+            Testimonials
+          </NavLink>
         </nav>
       </div>
     </header>

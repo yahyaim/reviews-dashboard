@@ -1,4 +1,4 @@
-"""# 🏡 Property Management Reviews Dashboard
+# 🏡 Property Management Reviews Dashboard
 
 A modern web application that helps property managers analyze, filter, and visualize guest reviews across multiple channels such as **Hostaway** and (optionally) **Google Reviews**.  
 The dashboard centralizes performance insights, highlights trends, and makes it easy to identify areas for improvement in guest experience.
@@ -19,6 +19,10 @@ The dashboard centralizes performance insights, highlights trends, and makes it 
 
 - **📈 Trends & Insights**  
   Detect recurring issues or strengths by category and visualize trends across listings.
+
+- **🌐 Publish to Website**  
+  Managers approve individual reviews (or a whole page at once) for the public Testimonials page. Reviews stay hidden until approved.
+  Approvals are currently stored in the browser (`localStorage`); move them to a backend store before going to production.
 
 - **💾 Export to Excel**  
   One-click export of filtered or paginated data for internal reporting and record-keeping.
@@ -86,18 +90,20 @@ These are used **server-side only** and never exposed to the client.
 ## 🧑‍💻 Local Development
 
 ```bash
-# Install dependencies
 pnpm install
-# or
-npm install
 
-# Run the dev server (includes API functions)
-vercel dev
-# or if using plain vite for frontend only
-npm run dev
-Visit: http://localhost:3000
+# Frontend + /api functions (needs the Vercel CLI and HOSTAWAY_TOKEN in .env.local)
+vercel dev            # http://localhost:3000
 
+# Frontend only — /api isn't available, so the dashboard shows sample data
+pnpm dev              # http://localhost:5173
+
+pnpm test             # unit tests (filters, rating maths, API handler)
+pnpm typecheck        # app + API
+pnpm lint
 ```
+
+Filters live in the URL (e.g. `/?listing=Baker%20Street&rating=%3C8`), so any view can be bookmarked or shared.
 
 ---
 

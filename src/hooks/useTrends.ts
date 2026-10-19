@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Review } from "../types/review";
+import { CATEGORIES, categoryScore, effectiveRating, isNegative } from "../lib/reviews";
 
 // very small English stoplist – extend as you like
 const STOPWORDS = new Set([
@@ -39,18 +40,8 @@ const bigrams = (words: string[]) => {
   return res;
 };
 
-const categoryScore = (r: Review, key: string) =>
-  r.reviewCategory?.find((c) => c.category === key)?.rating;
-
-const isNegative = (r: Review) => {
-  const rating = r.rating ?? 0;
-  const catBelow8 =
-    (r.reviewCategory ?? []).some((c) => (c.rating ?? 10) < 8);
-  return rating < 8 || catBelow8;
-};
-
 export type TrendsOutput = {
-  series: { month: MonthKey; count: number; avg: number }[];
+  series: { month: MonthKey; count: number; avg: number | null }[];
   negativeShare: { month: MonthKey; share: number }[];
   topKeywords: { term: string; count: number }[];
   topBigrams: { term: string; count: number }[];
@@ -62,19 +53,23 @@ export type TrendsOutput = {
 export function useTrends(reviews: Review[]): TrendsOutput {
   return useMemo(() => {
     // 1) Monthly aggregates
-    const monthMap: Record<MonthKey, { sum: number; n: number; neg: number }> = {};
+    const monthMap: Record<MonthKey, { sum: number; rated: number; n: number; neg: number }> = {};
     for (const r of reviews) {
       const m = monthKey(r.submittedAt);
-      if (!monthMap[m]) monthMap[m] = { sum: 0, n: 0, neg: 0 };
-      monthMap[m].sum += r.rating ?? 0;
+      if (!monthMap[m]) monthMap[m] = { sum: 0, rated: 0, n: 0, neg: 0 };
+      const rating = effectiveRating(r);
+      if (rating !== null) {
+        monthMap[m].sum += rating;
+        monthMap[m].rated += 1;
+      }
       monthMap[m].n += 1;
       if (isNegative(r)) monthMap[m].neg += 1;
     }
-    const months = Object.keys(monthMap).sort();
+    const months = Object.keys(monthMap).filter((m) => m !== "Unknown").sort();
     const series = months.map((m) => ({
       month: m,
       count: monthMap[m].n,
-      avg: monthMap[m].n ? +(monthMap[m].sum / monthMap[m].n).toFixed(2) : 0,
+      avg: monthMap[m].rated ? +(monthMap[m].sum / monthMap[m].rated).toFixed(2) : null,
     }));
     const negativeShare = months.map((m) => ({
       month: m,
@@ -88,7 +83,7 @@ export function useTrends(reviews: Review[]): TrendsOutput {
     for (const r of reviews) {
       const text = (r.publicReview || "").trim();
       if (!text) continue;
-      const consider = (r.rating ?? 10) <= 8.5 || isNegative(r);
+      const consider = (effectiveRating(r) ?? 10) <= 8.5 || isNegative(r);
       if (!consider) continue;
 
       const tokens = tokenize(text).filter(isInformative);
@@ -106,7 +101,7 @@ export function useTrends(reviews: Review[]): TrendsOutput {
     const topBigrams = toSorted(bigramCounts, 10);
 
     // 3) Category deltas (last month vs previous month)
-    const catKeys = ["cleanliness", "communication", "respect_house_rules"];
+    const catKeys = CATEGORIES.map((c) => c.key);
     const byMonthCat: Record<MonthKey, Record<string, { sum: number; n: number }>> = {};
     for (const r of reviews) {
       const m = monthKey(r.submittedAt);
@@ -139,15 +134,17 @@ export function useTrends(reviews: Review[]): TrendsOutput {
     // 4) Simple watchlist rules (spikes/drops)
     const watchlist: { type: "drop" | "spike"; message: string }[] = [];
     if (series.length >= 3) {
-      const last3 = series.slice(-3);
-      const avgLast3 = last3.reduce((a, b) => a + b.avg, 0) / last3.length;
-      const prev3 = series.slice(-6, -3);
-      if (prev3.length) {
-        const avgPrev3 = prev3.reduce((a, b) => a + b.avg, 0) / prev3.length;
+      const avgOf = (xs: (number | null)[]) => {
+        const nums = xs.filter((x): x is number => x !== null);
+        return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
+      };
+      const avgLast3 = avgOf(series.slice(-3).map((s) => s.avg));
+      const avgPrev3 = avgOf(series.slice(-6, -3).map((s) => s.avg));
+      if (avgLast3 !== null && avgPrev3 !== null) {
         if (avgPrev3 - avgLast3 >= 0.5) {
           watchlist.push({
             type: "drop",
-            message: `Average rating dropped ~${(avgPrev3 - avgLast3).toFixed(2)} in the last 3 months.`,
+            message: `Average rating dropped ${(avgPrev3 - avgLast3).toFixed(1)} points over the last 3 months with reviews.`,
           });
         }
       }
@@ -157,7 +154,7 @@ export function useTrends(reviews: Review[]): TrendsOutput {
       if (c.share - p.share >= 8) {
         watchlist.push({
           type: "spike",
-          message: `Negative review share jumped ${Math.round(c.share - p.share)}% month-over-month.`,
+          message: `Share of negative reviews rose ${Math.round(c.share - p.share)} points in ${c.month} vs ${p.month}.`,
         });
       }
     }

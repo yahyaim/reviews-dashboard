@@ -1,51 +1,21 @@
 import type { ReviewsResponse } from "../types/review";
 
-export type FetchReviewsOptions = {
-    limit?: number;
-    offset?: number;
-    sortBy?: string;
-    sortOrder?: "asc" | "desc";
-    listingMapIds?: (string | number)[];
-    reservationId?: string | number;
-    type?: string | number;
-    statuses?: (string | number)[];
-    [key: string]: QueryVal;
-  };
-type QueryVal = string | number | boolean | undefined | null | (string | number | boolean | null | undefined)[];
-
-function buildClientUrl(path: string, params: Record<string, QueryVal> = {}) {
-  const url = new URL(path, window.location.origin);
-  Object.entries(params).forEach(([k, v]) => {
-    if (v === undefined || v === null) return;
-    if (Array.isArray(v)) {
-      if (v.length > 0) url.searchParams.set(k, v.join(","));
-    } else {
-      url.searchParams.set(k, String(v));
-    }
-  });
-  return url.toString();
-}
-
-export async function fetchReviews(opts: FetchReviewsOptions = {}): Promise<ReviewsResponse> {
-  const url = buildClientUrl("/api/reviews", opts as any);
-  const res = await fetch(url, { method: "GET" });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `Failed to fetch reviews: ${res.status}`);
-  }
-  return res.json();
-}
-
+/** Fetches every page of reviews through the `/api/reviews` serverless proxy. */
 export async function fetchAllReviews(
-  baseOpts: Omit<FetchReviewsOptions, "offset" | "limit"> = {},
-  pageSize = 100,
-  maxPages = 50
+  params: Record<string, string | number> = {}
 ): Promise<ReviewsResponse> {
-  const url = buildClientUrl("/api/reviews", { ...baseOpts, all: "true", pageSize, maxPages });
-  const res = await fetch(url, { method: "GET" });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `Failed to fetch reviews: ${res.status}`);
+  const url = new URL("/api/reviews", window.location.origin);
+  url.searchParams.set("all", "true");
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
+
+  const res = await fetch(url);
+  // `vite dev` has no serverless runtime and answers with JS or HTML instead.
+  if (!res.headers.get("content-type")?.includes("application/json")) {
+    throw new Error(`Reviews API unavailable (HTTP ${res.status})`);
   }
-  return res.json();
+  const body = (await res.json()) as ReviewsResponse;
+  if (!res.ok || body.status !== "success" || !Array.isArray(body.result)) {
+    throw new Error(body.message || `Failed to fetch reviews (HTTP ${res.status})`);
+  }
+  return body;
 }
